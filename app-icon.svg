@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="210.00002mm"
+   height="297mm"
+   viewBox="0 0 150.00002 212.14286"
+   version="1.1">
+
+  <defs
+     id="defs1" />
+  <g
+     id="layer1"
+     transform="translate(-49.134048,-135.09123)">
+    <g
+       id="g7"
+       transform="rotate(-87.125821,66.356786,149.2061)">
+      <ellipse
+         style="fill:#d40000;fill-opacity:1;stroke:#000000;stroke-width:0;stroke-line cap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+         id="ellipse5"
+         cx="77.39621"
+         cy="146.70135"
+         rx="2.249507"
+         ry="2.2494826" />
+      <ellipse
+         style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+         id="ellipse7"
+         cx="72.957817"
+         cy="149.74388"
+         rx="2.2494826"
+         ry="2.249507" />
+      <ellipse
+         style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+         id="ellipse8"
+         cx="68.519424"
+         cy="152.78639"
+         rx="2.2494826"
+         ry="2.249507" />
+      <ellipse
+         style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+         id="ellipse9"
+         cx="64.081024"
+         cy="155.8289"
+         rx="2.249507"
+         ry="2.2494826" />
+    </g>
+    <path
+       style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:3.90001;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+       d="m 61.234295,142.14144 -8.054322,13.43282 c -6.63661,-4.30511 14.831135,-2.85562 14.831135,-2.85562"
+       id="path9"
+    />
+  </g>
+</svg>
