@@ -86,6 +86,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun insertTransaction(transaction: Transaction) {
+        viewModelScope.launch {
+            repository.insert(transaction)
+        }
+    }
+
     fun deleteTransactionById(id: Long) {
         viewModelScope.launch {
             repository.deleteById(id)

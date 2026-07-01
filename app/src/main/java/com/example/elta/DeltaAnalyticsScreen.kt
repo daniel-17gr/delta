@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -1436,10 +1437,11 @@ fun CategorySpendingRow(
                     .background(colors.border),
                 contentAlignment = Alignment.Center
             ) {
-                val iconStr = categoryEmoji(name)
-                Text(
-                    text = iconStr,
-                    fontSize = 11.sp
+                Icon(
+                    painter = painterResource(id = categoryIcon(name)),
+                    contentDescription = null,
+                    tint = colors.textPrimary,
+                    modifier = Modifier.size(14.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -2116,7 +2118,7 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Compute insights data
-            data class InsightItem(val icon: String, val iconColor: Color, val text: String)
+            data class InsightItem(val iconRes: Int, val rotation: Float = 0f, val iconColor: Color, val text: String)
 
             val insightsList = remember(transactions) {
                 val list = mutableListOf<InsightItem>()
@@ -2136,37 +2138,37 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
 
                 // 1. Income Insight
                 if (thisInc == 0.0 && lastInc == 0.0) {
-                    list.add(InsightItem("•", colors.textSecondary, "No income logged in the last 60 days."))
+                    list.add(InsightItem(R.drawable.ic_circle_small_1, 0f, colors.textSecondary, "No income logged in the last 60 days."))
                 } else if (lastInc == 0.0 && thisInc > 0.0) {
-                    list.add(InsightItem("↑", colors.positive, "First income recorded this month: ${currentCurrency.symbol}${String.format("%,.2f", thisInc)}!"))
+                    list.add(InsightItem(R.drawable.ic_move_up, 0f, colors.positive, "First income recorded this month: ${currentCurrency.symbol}${String.format("%,.2f", thisInc)}!"))
                 } else if (lastInc > 0.0 && thisInc == 0.0) {
-                    list.add(InsightItem("↓", colors.negative, "Income dropped to zero this month (was ${currentCurrency.symbol}${String.format("%,.2f", lastInc)} last month)."))
+                    list.add(InsightItem(R.drawable.ic_move_up, 180f, colors.negative, "Income dropped to zero this month (was ${currentCurrency.symbol}${String.format("%,.2f", lastInc)} last month)."))
                 } else {
                     val incDelta = (thisInc - lastInc) / lastInc * 100.0
                     if (incDelta > 0.1) {
-                        list.add(InsightItem("↑", colors.positive, "Income up by ${String.format("%.1f", incDelta)}% vs last month."))
+                        list.add(InsightItem(R.drawable.ic_move_up, 0f, colors.positive, "Income up by ${String.format("%.1f", incDelta)}% vs last month."))
                     } else if (incDelta < -0.1) {
-                        list.add(InsightItem("↓", colors.negative, "Income down by ${String.format("%.1f", abs(incDelta))}% vs last month."))
+                        list.add(InsightItem(R.drawable.ic_move_up, 180f, colors.negative, "Income down by ${String.format("%.1f", abs(incDelta))}% vs last month."))
                     } else {
-                        list.add(InsightItem("→", colors.textSecondary, "Income unchanged vs last month."))
+                        list.add(InsightItem(R.drawable.ic_move_up, 90f, colors.textSecondary, "Income unchanged vs last month."))
                     }
                 }
 
                 // 2. Expense Insight
                 if (thisExp == 0.0 && lastExp == 0.0) {
-                    list.add(InsightItem("•", colors.textSecondary, "No expenses logged in the last 60 days."))
+                    list.add(InsightItem(R.drawable.ic_circle_small_1, 0f, colors.textSecondary, "No expenses logged in the last 60 days."))
                 } else if (lastExp == 0.0 && thisExp > 0.0) {
-                    list.add(InsightItem("↑", colors.negative, "Expenses started this month at ${currentCurrency.symbol}${String.format("%,.2f", thisExp)}."))
+                    list.add(InsightItem(R.drawable.ic_move_up, 0f, colors.negative, "Expenses started this month at ${currentCurrency.symbol}${String.format("%,.2f", thisExp)}."))
                 } else if (lastExp > 0.0 && thisExp == 0.0) {
-                    list.add(InsightItem("↓", colors.positive, "Amazing! Expenses dropped to zero this month (was ${currentCurrency.symbol}${String.format("%,.2f", lastExp)} last month)."))
+                    list.add(InsightItem(R.drawable.ic_move_up, 180f, colors.positive, "Amazing! Expenses dropped to zero this month (was ${currentCurrency.symbol}${String.format("%,.2f", lastExp)} last month)."))
                 } else {
                     val expDelta = (thisExp - lastExp) / lastExp * 100.0
                     if (expDelta > 0.1) {
-                        list.add(InsightItem("↑", colors.negative, "Expenses up by ${String.format("%.1f", expDelta)}% vs last month."))
+                        list.add(InsightItem(R.drawable.ic_move_up, 0f, colors.negative, "Expenses up by ${String.format("%.1f", expDelta)}% vs last month."))
                     } else if (expDelta < -0.1) {
-                        list.add(InsightItem("↓", colors.positive, "Expenses down by ${String.format("%.1f", abs(expDelta))}% vs last month."))
+                        list.add(InsightItem(R.drawable.ic_move_up, 180f, colors.positive, "Expenses down by ${String.format("%.1f", abs(expDelta))}% vs last month."))
                     } else {
-                        list.add(InsightItem("→", colors.textSecondary, "Expenses unchanged vs last month."))
+                        list.add(InsightItem(R.drawable.ic_move_up, 90f, colors.textSecondary, "Expenses unchanged vs last month."))
                     }
                 }
 
@@ -2174,9 +2176,9 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
                 val topCat = thisMonth.filter { it.type == TransactionType.EXPENSE || it.type == TransactionType.LENT }
                     .groupBy { it.category }.maxByOrNull { e -> e.value.sumOf { abs(it.amount) } }?.key
                 if (topCat != null) {
-                    list.add(InsightItem("★", colors.textPrimary, "Top spend category this month: $topCat."))
+                    list.add(InsightItem(R.drawable.ic_star, 0f, colors.textPrimary, "Top spend category this month: $topCat."))
                 } else {
-                    list.add(InsightItem("★", colors.textSecondary, "Add transactions to see top spend category."))
+                    list.add(InsightItem(R.drawable.ic_star, 0f, colors.textSecondary, "Add transactions to see top spend category."))
                 }
 
                 // 4. Savings Rate Insight
@@ -2184,11 +2186,11 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
                     val savings = thisInc - thisExp
                     val savingsRate = savings / thisInc * 100.0
                     if (savingsRate >= 20.0) {
-                        list.add(InsightItem("💰", colors.positive, "Healthy savings rate of ${String.format("%.1f", savingsRate)}% this month!"))
+                        list.add(InsightItem(R.drawable.ic_piggy_bank, 0f, colors.positive, "Healthy savings rate of ${String.format("%.1f", savingsRate)}% this month!"))
                     } else if (savingsRate < 0.0) {
-                        list.add(InsightItem("⚠️", colors.negative, "Spending exceeded income this month (Savings rate: ${String.format("%.1f", savingsRate)}%)."))
+                        list.add(InsightItem(R.drawable.ic_triangle_alert, 0f, colors.negative, "Spending exceeded income this month (Savings rate: ${String.format("%.1f", savingsRate)}%)."))
                     } else {
-                        list.add(InsightItem("⚖️", colors.textSecondary, "Modest savings rate of ${String.format("%.1f", savingsRate)}% this month. Try aiming for 20%."))
+                        list.add(InsightItem(R.drawable.ic_scale, 0f, colors.textSecondary, "Modest savings rate of ${String.format("%.1f", savingsRate)}% this month. Try aiming for 20%."))
                     }
                 }
 
@@ -2223,7 +2225,7 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
                 val weekdayAvg = if (weekdayCount > 0) weekdaySum / weekdayCount else 0.0
                 if (weekdayAvg > 0.0 && weekendAvg > weekdayAvg * 1.25) {
                     val ratio = (weekendAvg - weekdayAvg) / weekdayAvg * 100.0
-                    list.add(InsightItem("🍕", colors.textPrimary, "Weekend spending is ${String.format("%.0f", ratio)}% higher on average than weekdays."))
+                    list.add(InsightItem(R.drawable.ic_pizza, 0f, colors.textPrimary, "Weekend spending is ${String.format("%.0f", ratio)}% higher on average than weekdays."))
                 }
 
                 // 6. Logging consistency
@@ -2232,16 +2234,16 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
                     c.get(Calendar.YEAR) * 10000 + c.get(Calendar.DAY_OF_YEAR)
                 }.size
                 if (activeDays >= 15) {
-                    list.add(InsightItem("📅", colors.positive, "Consistent tracking! You logged transactions on $activeDays of the last 30 days."))
+                    list.add(InsightItem(R.drawable.ic_star, 0f, colors.positive, "Consistent tracking! You logged transactions on $activeDays of the last 30 days."))
                 } else if (activeDays in 1..5) {
-                    list.add(InsightItem("✏️", colors.textSecondary, "Logged only on $activeDays days. Try logging daily to build a complete view."))
+                    list.add(InsightItem(R.drawable.ic_snail, 0f, colors.textSecondary, "Logged only on $activeDays days. Try logging daily to build a complete view."))
                 }
 
                 list
             }
 
             @Composable
-            fun InsightRow(icon: String, iconColor: Color, text: String) {
+            fun InsightRow(iconRes: Int, rotation: Float, iconColor: Color, text: String) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -2249,7 +2251,16 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
                     Box(
                         modifier = Modifier.size(32.dp).border(1.dp, colors.border, RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
-                    ) { Text(text = icon, color = iconColor, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                    ) {
+                        Icon(
+                            painter = painterResource(id = iconRes),
+                            contentDescription = null,
+                            tint = iconColor,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .rotate(rotation)
+                        )
+                    }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(text = text, fontSize = 13.sp, color = colors.textPrimary, modifier = Modifier.weight(1f))
                 }
@@ -2257,7 +2268,7 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
 
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 insightsList.forEach { item ->
-                    InsightRow(icon = item.icon, iconColor = item.iconColor, text = item.text)
+                    InsightRow(iconRes = item.iconRes, rotation = item.rotation, iconColor = item.iconColor, text = item.text)
                 }
             }
         }

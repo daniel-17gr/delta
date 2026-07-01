@@ -18,6 +18,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -60,7 +61,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -166,35 +167,36 @@ val allCategories = listOf(
     CategoryItem("Loans Out", TransactionType.LENT)
 )
 
-// Returns the emoji representing a given category name
-fun categoryEmoji(name: String): String = when (name) {
-    "Salary"     -> "💰"
-    "Business"   -> "🏢"
-    "Gifts"      -> "🎁"
-    "Side Gig"   -> "💻"
-    "Payouts"    -> "📈"
-    "Borrowed"   -> "📥"
-    "Loans"      -> "📥"
-    "Food"       -> "🍽️"
-    "Transit"    -> "🚌"
-    "Bills"      -> "🏠"
-    "Shopping"   -> "🛍️"
-    "Fun"        -> "🎉"
-    "Subs"       -> "💳"
-    "Health"     -> "💊"
-    "Education"  -> "📚"
-    "Insurance"  -> "🛡️"
-    "Lent"       -> "🫳"
-    "Loans Out"  -> "🏦"
+// Returns the drawable resource representing a given category name
+fun categoryIcon(name: String): Int = when (name) {
+    "Salary"     -> R.drawable.ic_banknote_check
+    "Business"   -> R.drawable.ic_landmark
+    "Gifts"      -> R.drawable.ic_gift
+    "Side Gig"   -> R.drawable.ic_pickaxe
+    "Payouts"    -> R.drawable.ic_banknote_arrow_up
+    "Borrowed"   -> R.drawable.ic_banknote_arrow_down
+    "Loans"      -> R.drawable.ic_banknote_arrow_down
+    "Food"       -> R.drawable.ic_utensils
+    "Transit"    -> R.drawable.ic_bus_2
+    "Bills"      -> R.drawable.ic_receipt_text
+    "Shopping"   -> R.drawable.ic_shopping_cart
+    "Fun"        -> R.drawable.ic_balloon
+    "Subs"       -> R.drawable.ic_credit_card
+    "Health"     -> R.drawable.ic_hospital
+    "Education"  -> R.drawable.ic_book
+    "Insurance"  -> R.drawable.ic_shield
+    "Donation"   -> R.drawable.ic_balloon
+    "Lent"       -> R.drawable.ic_hand_coins
+    "Loans Out"  -> R.drawable.ic_landmark
     // Legacy category names
-    "Grocery"    -> "🛒"
-    "Dining"     -> "🍽️"
-    "Fuel"       -> "⛽"
-    "Rent"       -> "🏠"
-    "Utilities"  -> "🔌"
-    "Freelance"  -> "💻"
-    "Gift"       -> "🎁"
-    else         -> "📁"
+    "Grocery"    -> R.drawable.ic_shopping_cart
+    "Dining"     -> R.drawable.ic_utensils
+    "Fuel"       -> R.drawable.ic_bus_2
+    "Rent"       -> R.drawable.ic_receipt_text
+    "Utilities"  -> R.drawable.ic_receipt_text
+    "Freelance"  -> R.drawable.ic_briefcase_business
+    "Gift"       -> R.drawable.ic_gift
+    else         -> R.drawable.ic_circle_1
 }
 
 // Compact number formatter: 1234 -> "1.2K", 1500000 -> "1.5M"
@@ -896,11 +898,6 @@ fun DeltaHomeScreen(
     val isDark = colors.background == Color.Black
 
     val historyListState = rememberLazyListState()
-    val isCollapsed by remember {
-        derivedStateOf {
-            historyListState.firstVisibleItemIndex > 0 || historyListState.firstVisibleItemScrollOffset > 50
-        }
-    }
 
     // Quick logging state — rememberSaveable preserves state across rotation
     var isEditing by rememberSaveable { mutableStateOf(false) }
@@ -1373,166 +1370,7 @@ fun DeltaHomeScreen(
                 // Divider
                 Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
 
-                AnimatedVisibility(
-                    visible = !isCollapsed,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column {
-                        // 2. Net Balance Block
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 32.dp)
-                                .graphicsLayer {
-                                    scaleX = netScale.value
-                                    scaleY = netScale.value
-                                }
-                        ) {
-                            Text(
-                        fontWeight = FontWeight.Bold,
-                                text = "NET",
-                                fontFamily = NothingGlyph,
-                                fontSize = 12.sp,
-                                color = colors.textSecondary,
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                        fontWeight = FontWeight.Bold,
-                                text = if (showAmounts) String.format("${currentCurrency.symbol}%,.2f", netBalance) else "${currentCurrency.symbol}••••",
-                                fontFamily = NothingGlyph,
-                                fontSize = 44.sp,
-                                color = colors.textPrimary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "${if (monthlyChange >= 0) "+" else "-"}${currentCurrency.symbol}${if (showAmounts) String.format("%,.0f", kotlin.math.abs(monthlyChange)) else "••••"} This Month",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = colors.positive
-                            )
-                        }
-
-                        // Divider
-                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
-
-                        // 3. Income / Expenses Row
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(end = 16.dp)
-                                    .graphicsLayer {
-                                        scaleX = incomeScale.value
-                                        scaleY = incomeScale.value
-                                    }
-                            ) {
-                                Text(
-                        fontWeight = FontWeight.Bold,
-                                    text = "INCOME",
-                                    fontFamily = NothingGlyph,
-                                    fontSize = 11.sp,
-                                    color = colors.textSecondary,
-                                    letterSpacing = 1.sp
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                        fontWeight = FontWeight.Bold,
-                                    text = if (showAmounts) String.format("${currentCurrency.symbol}%,.2f", totalIncome) else "${currentCurrency.symbol}••••",
-                                    fontFamily = NothingGlyph,
-                                    fontSize = 20.sp,
-                                    color = colors.textPrimary
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(40.dp)
-                                    .background(colors.border)
-                            )
-
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(start = 16.dp)
-                                    .graphicsLayer {
-                                        scaleX = expenseScale.value
-                                        scaleY = expenseScale.value
-                                    }
-                            ) {
-                                Text(
-                        fontWeight = FontWeight.Bold,
-                                    text = "EXPENSES",
-                                    fontFamily = NothingGlyph,
-                                    fontSize = 11.sp,
-                                    color = colors.textSecondary,
-                                    letterSpacing = 1.sp
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                        fontWeight = FontWeight.Bold,
-                                    text = if (showAmounts) String.format("${currentCurrency.symbol}%,.2f", totalExpense) else "${currentCurrency.symbol}••••",
-                                    fontFamily = NothingGlyph,
-                                    fontSize = 20.sp,
-                                    color = colors.textPrimary
-                                )
-                            }
-                        }
-
-                        // Divider
-                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
-
-                        // Today activity strip
-                        val todayNet = remember(transactionList) {
-                            val todayCal = Calendar.getInstance()
-                            transactionList.filter {
-                                val txCal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
-                                txCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
-                                txCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
-                            }.sumOf { it.amount }
-                        }
-                        if (todayNet != 0.0) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    fontWeight = FontWeight.Bold,
-                                    text = "TODAY",
-                                    fontFamily = NothingGlyph,
-                                    fontSize = 11.sp,
-                                    color = colors.textSecondary,
-                                    letterSpacing = 1.sp
-                                )
-                                Text(
-                                    fontWeight = FontWeight.Bold,
-                                    text = if (showAmounts) {
-                                        val prefix = if (todayNet >= 0) "↑ +" else "↓ "
-                                        "$prefix${String.format("${currentCurrency.symbol}%,.2f", kotlin.math.abs(todayNet))}"
-                                    } else {
-                                        if (todayNet >= 0) "↑ +${currentCurrency.symbol}••••" else "↓ ${currentCurrency.symbol}••••"
-                                    },
-                                    fontFamily = NothingGlyph,
-                                    fontSize = 13.sp,
-                                    color = if (todayNet >= 0) colors.positive else colors.negative
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
-                        }
-                    }
-                }
-
-                // 4. Transactions List
+                // 2. Scrollable transactions list (containing header elements inside LazyColumn)
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -1543,7 +1381,161 @@ fun DeltaHomeScreen(
                         onTransactionClick = { showOptionsDialogFor = it },
                         showAmounts = showAmounts,
                         listState = historyListState,
-                        bottomPadding = 96
+                        bottomPadding = 96,
+                        headerContent = {
+                            Column {
+                                // 2. Net Balance Block
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 32.dp)
+                                        .graphicsLayer {
+                                            scaleX = netScale.value
+                                            scaleY = netScale.value
+                                        }
+                                ) {
+                                    Text(
+                                        fontWeight = FontWeight.Bold,
+                                        text = "NET",
+                                        fontFamily = NothingGlyph,
+                                        fontSize = 12.sp,
+                                        color = colors.textSecondary,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        fontWeight = FontWeight.Bold,
+                                        text = if (showAmounts) String.format("${currentCurrency.symbol}%,.2f", netBalance) else "${currentCurrency.symbol}••••",
+                                        fontFamily = NothingGlyph,
+                                        fontSize = 44.sp,
+                                        color = colors.textPrimary
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${if (monthlyChange >= 0) "+" else "-"}${currentCurrency.symbol}${if (showAmounts) String.format("%,.0f", kotlin.math.abs(monthlyChange)) else "••••"} This Month",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = colors.positive
+                                    )
+                                }
+
+                                // Divider
+                                Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+
+                                // 3. Income / Expenses Row
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(end = 16.dp)
+                                            .graphicsLayer {
+                                                scaleX = incomeScale.value
+                                                scaleY = incomeScale.value
+                                            }
+                                    ) {
+                                        Text(
+                                            fontWeight = FontWeight.Bold,
+                                            text = "INCOME",
+                                            fontFamily = NothingGlyph,
+                                            fontSize = 11.sp,
+                                            color = colors.textSecondary,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            fontWeight = FontWeight.Bold,
+                                            text = if (showAmounts) String.format("${currentCurrency.symbol}%,.2f", totalIncome) else "${currentCurrency.symbol}••••",
+                                            fontFamily = NothingGlyph,
+                                            fontSize = 20.sp,
+                                            color = colors.textPrimary
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .width(1.dp)
+                                            .height(40.dp)
+                                            .background(colors.border)
+                                    )
+
+                                    Column(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(start = 16.dp)
+                                            .graphicsLayer {
+                                                scaleX = expenseScale.value
+                                                scaleY = expenseScale.value
+                                            }
+                                    ) {
+                                        Text(
+                                            fontWeight = FontWeight.Bold,
+                                            text = "EXPENSES",
+                                            fontFamily = NothingGlyph,
+                                            fontSize = 11.sp,
+                                            color = colors.textSecondary,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            fontWeight = FontWeight.Bold,
+                                            text = if (showAmounts) String.format("${currentCurrency.symbol}%,.2f", totalExpense) else "${currentCurrency.symbol}••••",
+                                            fontFamily = NothingGlyph,
+                                            fontSize = 20.sp,
+                                            color = colors.textPrimary
+                                        )
+                                    }
+                                }
+
+                                // Divider
+                                Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+
+                                // Today activity strip
+                                val todayNet = remember(transactionList) {
+                                    val todayCal = Calendar.getInstance()
+                                    transactionList.filter {
+                                        val txCal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+                                        txCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                                        txCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
+                                    }.sumOf { it.amount }
+                                }
+                                if (todayNet != 0.0) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            fontWeight = FontWeight.Bold,
+                                            text = "TODAY",
+                                            fontFamily = NothingGlyph,
+                                            fontSize = 11.sp,
+                                            color = colors.textSecondary,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Text(
+                                            fontWeight = FontWeight.Bold,
+                                            text = if (showAmounts) {
+                                                val prefix = if (todayNet >= 0) "↑ +" else "↓ "
+                                                "$prefix${String.format("${currentCurrency.symbol}%,.2f", kotlin.math.abs(todayNet))}"
+                                            } else {
+                                                if (todayNet >= 0) "↑ +${currentCurrency.symbol}••••" else "↓ ${currentCurrency.symbol}••••"
+                                            },
+                                            fontFamily = NothingGlyph,
+                                            fontSize = 13.sp,
+                                            color = if (todayNet >= 0) colors.positive else colors.negative
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+                                }
+                            }
+                        }
                     )
                 }
             }
@@ -1764,9 +1756,11 @@ fun TransactionRow(
         // Left: emoji + category + time
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = categoryEmoji(tx.category),
-                    fontSize = 14.sp
+                Icon(
+                    painter = painterResource(id = categoryIcon(tx.category)),
+                    contentDescription = null,
+                    tint = colors.textPrimary,
+                    modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
@@ -1816,16 +1810,19 @@ fun TransactionRow(
 // ─────────────────────────────────────────────
 // History List: filter chips + sticky headers + go-to jump bar
 // ─────────────────────────────────────────────
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TransactionHistoryList(
     transactions: List<Transaction>,
     onTransactionClick: (Transaction) -> Unit,
     showAmounts: Boolean = true,
     listState: LazyListState = rememberLazyListState(),
-    bottomPadding: Int = 120
+    bottomPadding: Int = 120,
+    headerContent: (@Composable () -> Unit)? = null
 ) {
     val colors = LocalDeltaColors.current
     val haptic = LocalHapticFeedback.current
+    val isDark = colors.background == Color.Black
     val coroutineScope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -1854,10 +1851,9 @@ fun TransactionHistoryList(
     }
 
     // Build a flat index map: dateKey -> index of its header inside the LazyColumn
-    // Structure: [topPadding item(0)] [header(1)] [row(2)..row(n)] [header(n+1)]...
     val headerIndexMap = remember(grouped) {
         val map = mutableMapOf<Int, Int>()
-        var idx = 1 // item 0 = top spacer
+        var idx = if (headerContent != null) 3 else 2
         grouped.forEach { (dateKey, txList) ->
             map[dateKey] = idx
             idx += 1 + txList.size // header + rows
@@ -1877,215 +1873,224 @@ fun TransactionHistoryList(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // ── Filter chips row ──
-            if (isLandscape) {
-                // Symmetrical FlowRow layout for landscape/horizontal/tablet mode
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    HistoryFilter.entries.forEach { filter ->
-                        val isActive = filter == activeFilter
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(if (isActive) colors.textPrimary else colors.buttonBackground)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    activeFilter = filter
-                                }
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                        fontWeight = FontWeight.Bold,
-                                text = filter.name,
-                                fontFamily = NothingGlyph,
-                                fontSize = 11.sp,
-                                letterSpacing = 1.sp,
-                                color = if (isActive) colors.background else colors.textSecondary
-                            )
-                        }
-                    }
-
-                    // "Go to" toggle button
-                    if (grouped.size > 1) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(if (showJumpBar) colors.textPrimary else colors.buttonBackground)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    showJumpBar = !showJumpBar
-                                }
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                        fontWeight = FontWeight.Bold,
-                                text = "GO TO",
-                                fontFamily = NothingGlyph,
-                                fontSize = 11.sp,
-                                letterSpacing = 1.sp,
-                                color = if (showJumpBar) colors.background else colors.textSecondary
-                            )
-                        }
-                    }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (headerContent != null) {
+                item(key = "header_content_root") {
+                    headerContent()
                 }
-            } else {
-                // Row layout with space-between spacer for portrait mode
-                Row(
+            }
+
+            stickyHeader(key = "filter_bar_sticky") {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(colors.background)
                 ) {
-                    HistoryFilter.entries.forEach { filter ->
-                        val isActive = filter == activeFilter
-                        Box(
+                    if (isLandscape) {
+                        FlowRow(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(if (isActive) colors.textPrimary else colors.buttonBackground)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    activeFilter = filter
-                                }
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(top = 12.dp, bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                        fontWeight = FontWeight.Bold,
-                                text = filter.name,
-                                fontFamily = NothingGlyph,
-                                fontSize = 11.sp,
-                                letterSpacing = 1.sp,
-                                color = if (isActive) colors.background else colors.textSecondary
-                            )
+                            HistoryFilter.entries.forEach { filter ->
+                                val isActive = filter == activeFilter
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(if (isActive) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            activeFilter = filter
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        fontWeight = FontWeight.Bold,
+                                        text = filter.name,
+                                        fontFamily = NothingGlyph,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.sp,
+                                        color = if (isActive) colors.background else colors.textSecondary
+                                    )
+                                }
+                            }
+
+                            if (grouped.size > 1) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(if (showJumpBar) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            showJumpBar = !showJumpBar
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        fontWeight = FontWeight.Bold,
+                                        text = "GO TO",
+                                        fontFamily = NothingGlyph,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.sp,
+                                        color = if (showJumpBar) colors.background else colors.textSecondary
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp, bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            HistoryFilter.entries.forEach { filter ->
+                                val isActive = filter == activeFilter
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(if (isActive) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            activeFilter = filter
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        fontWeight = FontWeight.Bold,
+                                        text = filter.name,
+                                        fontFamily = NothingGlyph,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.sp,
+                                        color = if (isActive) colors.background else colors.textSecondary
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            if (grouped.size > 1) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(if (showJumpBar) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            showJumpBar = !showJumpBar
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        fontWeight = FontWeight.Bold,
+                                        text = "GO TO",
+                                        fontFamily = NothingGlyph,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.sp,
+                                        color = if (showJumpBar) colors.background else colors.textSecondary
+                                    )
+                                }
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // "Go to" toggle button
-                    if (grouped.size > 1) {
-                        Box(
+                    AnimatedVisibility(
+                        visible = showJumpBar,
+                        enter = fadeIn() + scaleIn(initialScale = 0.92f),
+                        exit = fadeOut() + scaleOut(targetScale = 0.92f)
+                    ) {
+                        LazyRow(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(if (showJumpBar) colors.textPrimary else colors.buttonBackground)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    showJumpBar = !showJumpBar
-                                }
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .padding(bottom = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                        fontWeight = FontWeight.Bold,
-                                text = "GO TO",
-                                fontFamily = NothingGlyph,
-                                fontSize = 11.sp,
-                                letterSpacing = 1.sp,
-                                color = if (showJumpBar) colors.background else colors.textSecondary
-                            )
+                            items(visibleDateLabels, key = { it.first }) { (dateKey, label) ->
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                        .background(colors.surface)
+                                        .clickable {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            val targetIdx = headerIndexMap[dateKey] ?: return@clickable
+                                            coroutineScope.launch {
+                                                listState.animateScrollToItem(index = targetIdx)
+                                            }
+                                            showJumpBar = false
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        fontWeight = FontWeight.Bold,
+                                        text = label,
+                                        fontFamily = NothingGlyph,
+                                        fontSize = 11.sp,
+                                        letterSpacing = 1.sp,
+                                        color = colors.textPrimary
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // ── Animated jump bar ──
-            AnimatedVisibility(
-                visible = showJumpBar,
-                enter = fadeIn() + scaleIn(initialScale = 0.92f),
-                exit = fadeOut() + scaleOut(targetScale = 0.92f)
-            ) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(visibleDateLabels, key = { it.first }) { (dateKey, label) ->
+            if (filtered.isEmpty()) {
+                item(key = "no_transactions_item") {
+                    Box(
+                        modifier = Modifier
+                            .fillParentMaxSize()
+                            .padding(vertical = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            fontWeight = FontWeight.Bold,
+                            text = "NO TRANSACTIONS",
+                            fontFamily = NothingGlyph,
+                            fontSize = 13.sp,
+                            letterSpacing = 2.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                }
+            } else {
+                item { Spacer(modifier = Modifier.height(4.dp)) }
+                grouped.forEach { (_, txList) ->
+                    val label = dayLabel(txList.first().timestamp)
+                    item(key = "header_${epochDay(txList.first().timestamp)}") {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
-                                .background(colors.surface)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    val targetIdx = headerIndexMap[dateKey] ?: return@clickable
-                                    coroutineScope.launch {
-                                        listState.animateScrollToItem(index = targetIdx)
-                                    }
-                                    showJumpBar = false
-                                }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth()
+                                .background(colors.background)
+                                .padding(vertical = 6.dp)
                         ) {
                             Text(
-                        fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Bold,
                                 text = label,
                                 fontFamily = NothingGlyph,
                                 fontSize = 11.sp,
-                                letterSpacing = 1.sp,
-                                color = colors.textPrimary
+                                letterSpacing = 2.sp,
+                                color = colors.textSecondary
                             )
                         }
                     }
-                }
-            }
-
-            // ── Grouped transaction list ──
-            if (filtered.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        fontWeight = FontWeight.Bold,
-                        text = "NO TRANSACTIONS",
-                        fontFamily = NothingGlyph,
-                        fontSize = 13.sp,
-                        letterSpacing = 2.sp,
-                        color = colors.textSecondary
-                    )
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item { Spacer(modifier = Modifier.height(4.dp)) }
-                    grouped.forEach { (_, txList) ->
-                        val label = dayLabel(txList.first().timestamp)
-                        stickyHeader(key = "header_${epochDay(txList.first().timestamp)}") {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(colors.background)
-                                    .padding(vertical = 6.dp)
-                            ) {
-                                Text(
-                        fontWeight = FontWeight.Bold,
-                                    text = label,
-                                    fontFamily = NothingGlyph,
-                                    fontSize = 11.sp,
-                                    letterSpacing = 2.sp,
-                                    color = colors.textSecondary
-                                )
-                            }
-                        }
-                        items(txList, key = { it.id }) { tx ->
-                            TransactionRow(tx, showAmounts = showAmounts, onClick = { onTransactionClick(tx) })
-                        }
+                    items(txList, key = { it.id }) { tx ->
+                        TransactionRow(tx, showAmounts = showAmounts, onClick = { onTransactionClick(tx) })
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    item { Spacer(modifier = Modifier.height(bottomPadding.dp)) }
                 }
+                item { Spacer(modifier = Modifier.height(bottomPadding.dp)) }
             }
         }
     }
@@ -2209,23 +2214,36 @@ fun FloatingLoggerPanel(
                         ) {
                             filteredCategories.forEach { cat ->
                                 val isSelected = selectedCategory == cat.name
+                                val isDark = colors.background == Color.Black
+                                val selectedBg = if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8)
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(16.dp))
-                                        .background(if (isSelected) colors.textPrimary else colors.buttonBackground)
+                                        .background(if (isSelected) selectedBg else colors.buttonBackground)
                                         .clickable {
                                             onCategorySelect(cat.name, cat.type)
                                         }
                                         .padding(horizontal = 10.dp, vertical = 6.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = cat.name.uppercase(),
-                                        fontSize = 9.sp,
-                                        fontFamily = NothingGlyph,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) colors.background else colors.textSecondary
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = categoryIcon(cat.name)),
+                                            contentDescription = null,
+                                            tint = if (isSelected) colors.textPrimary else colors.textSecondary,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Text(
+                                            text = cat.name.uppercase(),
+                                            fontSize = 9.sp,
+                                            fontFamily = NothingGlyph,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) colors.textPrimary else colors.textSecondary
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -2309,23 +2327,36 @@ fun FloatingLoggerPanel(
                     ) {
                         filteredCategories.forEach { cat ->
                             val isSelected = selectedCategory == cat.name
+                            val isDark = colors.background == Color.Black
+                            val selectedBg = if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8)
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isSelected) colors.textPrimary else colors.buttonBackground)
+                                    .background(if (isSelected) selectedBg else colors.buttonBackground)
                                     .clickable {
                                         onCategorySelect(cat.name, cat.type)
                                     }
                                     .padding(horizontal = 14.dp, vertical = 6.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = cat.name.uppercase(),
-                                    fontSize = 11.sp,
-                                    fontFamily = NothingGlyph,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) colors.background else colors.textSecondary
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = categoryIcon(cat.name)),
+                                        contentDescription = null,
+                                        tint = if (isSelected) colors.textPrimary else colors.textSecondary,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = cat.name.uppercase(),
+                                        fontSize = 11.sp,
+                                        fontFamily = NothingGlyph,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) colors.textPrimary else colors.textSecondary
+                                    )
+                                }
                             }
                         }
                     }
