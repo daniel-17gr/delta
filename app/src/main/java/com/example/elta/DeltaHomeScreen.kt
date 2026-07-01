@@ -2215,11 +2215,11 @@ fun FloatingLoggerPanel(
                             filteredCategories.forEach { cat ->
                                 val isSelected = selectedCategory == cat.name
                                 val isDark = colors.background == Color.Black
-                                val selectedBg = if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8)
+                                val unselectedBg = if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8)
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(16.dp))
-                                        .background(if (isSelected) selectedBg else colors.buttonBackground)
+                                        .background(if (isSelected) colors.textPrimary else unselectedBg)
                                         .clickable {
                                             onCategorySelect(cat.name, cat.type)
                                         }
@@ -2233,7 +2233,7 @@ fun FloatingLoggerPanel(
                                         Icon(
                                             painter = painterResource(id = categoryIcon(cat.name)),
                                             contentDescription = null,
-                                            tint = if (isSelected) colors.textPrimary else colors.textSecondary,
+                                            tint = if (isSelected) colors.background else colors.textSecondary,
                                             modifier = Modifier.size(12.dp)
                                         )
                                         Text(
@@ -2241,7 +2241,7 @@ fun FloatingLoggerPanel(
                                             fontSize = 9.sp,
                                             fontFamily = NothingGlyph,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isSelected) colors.textPrimary else colors.textSecondary
+                                            color = if (isSelected) colors.background else colors.textSecondary
                                         )
                                     }
                                 }
@@ -2328,11 +2328,11 @@ fun FloatingLoggerPanel(
                         filteredCategories.forEach { cat ->
                             val isSelected = selectedCategory == cat.name
                             val isDark = colors.background == Color.Black
-                            val selectedBg = if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8)
+                            val unselectedBg = if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8)
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isSelected) selectedBg else colors.buttonBackground)
+                                    .background(if (isSelected) colors.textPrimary else unselectedBg)
                                     .clickable {
                                         onCategorySelect(cat.name, cat.type)
                                     }
@@ -2346,7 +2346,7 @@ fun FloatingLoggerPanel(
                                     Icon(
                                         painter = painterResource(id = categoryIcon(cat.name)),
                                         contentDescription = null,
-                                        tint = if (isSelected) colors.textPrimary else colors.textSecondary,
+                                        tint = if (isSelected) colors.background else colors.textSecondary,
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
@@ -2354,7 +2354,7 @@ fun FloatingLoggerPanel(
                                         fontSize = 11.sp,
                                         fontFamily = NothingGlyph,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) colors.textPrimary else colors.textSecondary
+                                        color = if (isSelected) colors.background else colors.textSecondary
                                     )
                                 }
                             }
