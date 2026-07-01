@@ -60,6 +60,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -164,6 +165,46 @@ val allCategories = listOf(
     CategoryItem("Lent", TransactionType.LENT),
     CategoryItem("Loans Out", TransactionType.LENT)
 )
+
+// Returns the emoji representing a given category name
+fun categoryEmoji(name: String): String = when (name) {
+    "Salary"     -> "💰"
+    "Business"   -> "🏢"
+    "Gifts"      -> "🎁"
+    "Side Gig"   -> "💻"
+    "Payouts"    -> "📈"
+    "Borrowed"   -> "📥"
+    "Loans"      -> "📥"
+    "Food"       -> "🍽️"
+    "Transit"    -> "🚌"
+    "Bills"      -> "🏠"
+    "Shopping"   -> "🛍️"
+    "Fun"        -> "🎉"
+    "Subs"       -> "💳"
+    "Health"     -> "💊"
+    "Education"  -> "📚"
+    "Insurance"  -> "🛡️"
+    "Lent"       -> "🫳"
+    "Loans Out"  -> "🏦"
+    // Legacy category names
+    "Grocery"    -> "🛒"
+    "Dining"     -> "🍽️"
+    "Fuel"       -> "⛽"
+    "Rent"       -> "🏠"
+    "Utilities"  -> "🔌"
+    "Freelance"  -> "💻"
+    "Gift"       -> "🎁"
+    else         -> "📁"
+}
+
+// Compact number formatter: 1234 -> "1.2K", 1500000 -> "1.5M"
+fun formatCompact(amount: Double, symbol: String): String {
+    return when {
+        amount >= 1_000_000 -> String.format("%s%.1fM", symbol, amount / 1_000_000)
+        amount >= 1_000     -> String.format("%s%.1fK", symbol, amount / 1_000)
+        else                -> String.format("%s%.2f", symbol, amount)
+    }
+}
 
 // Custom Expression Evaluator supporting Addition, Subtraction, Multiplication, Division, and Parentheses
 // Returns null if the expression is mathematically invalid
@@ -861,15 +902,17 @@ fun DeltaHomeScreen(
         }
     }
 
-    // Quick logging state
-    var isEditing by remember { mutableStateOf(false) }
-    var typedAmountString by remember { mutableStateOf("0") }
-    var tempCategory by remember { mutableStateOf<String?>(null) }
-    var tempType by remember { mutableStateOf(TransactionType.INCOME) }
-    var tempFlowType by remember { mutableStateOf(TransactionType.INCOME) }
-    
+    // Quick logging state — rememberSaveable preserves state across rotation
+    var isEditing by rememberSaveable { mutableStateOf(false) }
+    var typedAmountString by rememberSaveable { mutableStateOf("0") }
+    var tempCategory by rememberSaveable { mutableStateOf<String?>(null) }
+    var tempTypeName by rememberSaveable { mutableStateOf(TransactionType.INCOME.name) }
+    var tempType by remember(tempTypeName) { mutableStateOf(TransactionType.valueOf(tempTypeName)) }
+    var tempFlowTypeName by rememberSaveable { mutableStateOf(TransactionType.INCOME.name) }
+    var tempFlowType by remember(tempFlowTypeName) { mutableStateOf(TransactionType.valueOf(tempFlowTypeName)) }
+
     // Validation error state
-    var validationError by remember { mutableStateOf<String?>(null) }
+    var validationError by rememberSaveable { mutableStateOf<String?>(null) }
     
     // Currency picker dialog visibility
     var showCurrencyPicker by remember { mutableStateOf(false) }
@@ -877,7 +920,7 @@ fun DeltaHomeScreen(
     // Edit/Delete state variables
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
     var showOptionsDialogFor by remember { mutableStateOf<Transaction?>(null) }
-    var showAmounts by remember { mutableStateOf(true) }
+    var showAmounts by rememberSaveable { mutableStateOf(true) }
 
     // Intercept back key to close editing pane if open
     BackHandler(enabled = isEditing) {
@@ -928,13 +971,14 @@ fun DeltaHomeScreen(
                 } else {
                     String.format(Locale.US, "%.2f", kotlin.math.abs(tx.amount))
                 }
-                tempFlowType = if (tx.type == TransactionType.INCOME || tx.type == TransactionType.BORROWED) {
+                val newFlow = if (tx.type == TransactionType.INCOME || tx.type == TransactionType.BORROWED) {
                     TransactionType.INCOME
                 } else {
                     TransactionType.EXPENSE
                 }
+                tempFlowTypeName = newFlow.name
                 tempCategory = tx.category
-                tempType = tx.type
+                tempTypeName = tx.type.name
                 isEditing = true
                 validationError = null
             },
@@ -1164,6 +1208,50 @@ fun DeltaHomeScreen(
                             )
                         }
                     }
+
+                    // Today activity strip (landscape)
+                    val todayNetLandscape = remember(transactionList) {
+                        val todayCal = java.util.Calendar.getInstance()
+                        transactionList.filter {
+                            val txCal = java.util.Calendar.getInstance().apply { timeInMillis = it.timestamp }
+                            txCal.get(java.util.Calendar.YEAR) == todayCal.get(java.util.Calendar.YEAR) &&
+                            txCal.get(java.util.Calendar.DAY_OF_YEAR) == todayCal.get(java.util.Calendar.DAY_OF_YEAR)
+                        }.sumOf { it.amount }
+                    }
+                    if (todayNetLandscape != 0.0) {
+                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                fontWeight = FontWeight.Bold,
+                                text = "TODAY",
+                                fontFamily = NothingGlyph,
+                                fontSize = 11.sp,
+                                color = colors.textSecondary,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                fontWeight = FontWeight.Bold,
+                                text = if (showAmounts) {
+                                    val prefix = if (todayNetLandscape >= 0) "↑ +" else "↓ "
+                                    "$prefix${String.format("${currentCurrency.symbol}%,.2f", kotlin.math.abs(todayNetLandscape))}"
+                                } else {
+                                    if (todayNetLandscape >= 0) "↑ +${currentCurrency.symbol}••••" else "↓ ${currentCurrency.symbol}••••"
+                                },
+                                fontFamily = NothingGlyph,
+                                fontSize = 13.sp,
+                                color = if (todayNetLandscape >= 0) colors.positive else colors.negative
+                            )
+                        }
+                    }
+
+                    // Divider
+                    Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
                 }
 
                 Spacer(modifier = Modifier.width(24.dp))
@@ -1400,6 +1488,47 @@ fun DeltaHomeScreen(
 
                         // Divider
                         Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+
+                        // Today activity strip
+                        val todayNet = remember(transactionList) {
+                            val todayCal = Calendar.getInstance()
+                            transactionList.filter {
+                                val txCal = Calendar.getInstance().apply { timeInMillis = it.timestamp }
+                                txCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                                txCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
+                            }.sumOf { it.amount }
+                        }
+                        if (todayNet != 0.0) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    fontWeight = FontWeight.Bold,
+                                    text = "TODAY",
+                                    fontFamily = NothingGlyph,
+                                    fontSize = 11.sp,
+                                    color = colors.textSecondary,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    fontWeight = FontWeight.Bold,
+                                    text = if (showAmounts) {
+                                        val prefix = if (todayNet >= 0) "↑ +" else "↓ "
+                                        "$prefix${String.format("${currentCurrency.symbol}%,.2f", kotlin.math.abs(todayNet))}"
+                                    } else {
+                                        if (todayNet >= 0) "↑ +${currentCurrency.symbol}••••" else "↓ ${currentCurrency.symbol}••••"
+                                    },
+                                    fontFamily = NothingGlyph,
+                                    fontSize = 13.sp,
+                                    color = if (todayNet >= 0) colors.positive else colors.negative
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+                        }
                     }
                 }
 
@@ -1456,7 +1585,7 @@ fun DeltaHomeScreen(
                 onCategorySelect = { category, type ->
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     tempCategory = category
-                    tempType = type
+                    tempTypeName = type.name
                     validationError = null
                 },
                 onKeyPress = { char ->
@@ -1516,9 +1645,9 @@ fun DeltaHomeScreen(
                 onUpClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     typedAmountString = "0"
-                    tempFlowType = TransactionType.INCOME
+                    tempFlowTypeName = TransactionType.INCOME.name
                     tempCategory = null
-                    tempType = TransactionType.INCOME
+                    tempTypeName = TransactionType.INCOME.name
                     isEditing = true
                     editingTransaction = null
                     validationError = null
@@ -1526,9 +1655,9 @@ fun DeltaHomeScreen(
                 onDownClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     typedAmountString = "0"
-                    tempFlowType = TransactionType.EXPENSE
+                    tempFlowTypeName = TransactionType.EXPENSE.name
                     tempCategory = null
-                    tempType = TransactionType.EXPENSE
+                    tempTypeName = TransactionType.EXPENSE.name
                     isEditing = true
                     editingTransaction = null
                     validationError = null
@@ -1632,24 +1761,20 @@ fun TransactionRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left: category + time
+        // Left: emoji + category + time
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = categoryEmoji(tx.category),
+                    fontSize = 14.sp
+                )
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = tx.category,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
                     color = colors.textPrimary
                 )
-                if (tx.type == TransactionType.BORROWED || tx.type == TransactionType.LENT) {
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (tx.type == TransactionType.BORROWED) "⇩" else "⇧",
-                        fontSize = 14.sp,
-                        color = colors.textSecondary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(

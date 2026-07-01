@@ -79,9 +79,6 @@ import java.util.Date
 import java.util.Locale
 
 // Load Custom Emoji Font
-val EmojiFont = FontFamily(
-    Font(R.font.emoji, FontWeight.Normal)
-)
 
 @Composable
 fun DeltaAnalyticsScreen(
@@ -1425,12 +1422,12 @@ fun CategorySpendingRow(
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // Emoji icon + name (fixed width)
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1.2f)
+            modifier = Modifier.weight(1f)
         ) {
             Box(
                 modifier = Modifier
@@ -1439,59 +1436,45 @@ fun CategorySpendingRow(
                     .background(colors.border),
                 contentAlignment = Alignment.Center
             ) {
-                val iconStr = when (name) {
-                    "Grocery" -> "🛒"
-                    "Dining" -> "🍽️"
-                    "Shopping" -> "🛍️"
-                    "Fuel" -> "⛽"
-                    "Rent" -> "🏠"
-                    "Subs" -> "💳"
-                    "Utilities" -> "🔌"
-                    "Lent" -> "⇧"
-                    "Salary" -> "💰"
-                    "Freelance" -> "💻"
-                    "Gift" -> "🎁"
-                    "Borrowed" -> "📥"
-                    else -> "📁"
-                }
-                // Use the custom Emoji font resource for perfect color emoji rendering
+                val iconStr = categoryEmoji(name)
                 Text(
                     text = iconStr,
-                    fontFamily = EmojiFont,
                     fontSize = 11.sp
                 )
             }
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = name,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = colors.textPrimary
+                color = colors.textPrimary,
+                maxLines = 1
             )
         }
 
+        // Progress bar (medium weight)
         DotsProgressBar(
             percentage = percentage,
             color = color,
-            modifier = Modifier.weight(1.5f)
+            modifier = Modifier.weight(1.2f)
         )
 
-        Row(
-            modifier = Modifier.weight(1.1f),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
+        // Amount + percentage (right-aligned, compact)
+        Column(
+            modifier = Modifier.weight(0.9f),
+            horizontalAlignment = Alignment.End
         ) {
             Text(
-                        fontWeight = FontWeight.Bold,
-                text = String.format("${currentCurrency.symbol}%,.2f", amount),
+                fontWeight = FontWeight.Bold,
+                text = formatCompact(amount, currentCurrency.symbol),
                 fontFamily = NothingGlyph,
-                fontSize = 12.sp,
-                color = colors.textPrimary
+                fontSize = 11.sp,
+                color = colors.textPrimary,
+                maxLines = 1
             )
-            Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = String.format("%.1f%%", percentage * 100),
-                fontSize = 12.sp,
+                fontSize = 10.sp,
                 color = colors.textSecondary
             )
         }
@@ -1537,7 +1520,7 @@ fun DailyAveragesCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         fontWeight = FontWeight.Bold,
-                        text = String.format("${currentCurrency.symbol}%,.0f", totalExpense / rangeDays),
+                        text = formatCompact(totalExpense / rangeDays, currentCurrency.symbol),
                         fontFamily = NothingGlyph, fontSize = 20.sp, color = colors.negative
                     )
                 }
@@ -1547,7 +1530,7 @@ fun DailyAveragesCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         fontWeight = FontWeight.Bold,
-                        text = String.format("${currentCurrency.symbol}%,.0f", totalIncome / rangeDays),
+                        text = formatCompact(totalIncome / rangeDays, currentCurrency.symbol),
                         fontFamily = NothingGlyph, fontSize = 20.sp, color = colors.positive
                     )
                 }
@@ -1936,7 +1919,7 @@ fun SpendingWeekdayCard(transactions: List<Transaction> = emptyList()) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                         fontWeight = FontWeight.Bold,
-                            text = String.format("%,.0f", amt),
+                            text = formatCompact(amt, ""),
                             fontFamily = NothingGlyph,
                             fontSize = 12.sp,
                             color = colors.textPrimary,
@@ -1980,7 +1963,7 @@ fun FinancialRatiosCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val savingsRate = if (income > 0) (savings / income * 100).coerceAtLeast(0.0) else 0.0
+            val savingsRate = if (income > 0) (savings / income * 100) else 0.0
             val expenseRatio = if (income > 0) (expense / income * 100) else 0.0
             val borrowRatio = if (income > 0) (borrowed / income * 100) else 0.0
 
@@ -1996,8 +1979,13 @@ fun FinancialRatiosCard(
                         text = String.format("%.0f%%", savingsRate),
                         fontFamily = NothingGlyph,
                         fontSize = 22.sp,
-                        color = colors.positive
+                        color = when {
+                            savingsRate >= 20 -> colors.positive
+                            savingsRate >= 0  -> Color(0xFFFFA726) // amber
+                            else             -> colors.negative
+                        }
                     )
+                    Text(text = "of income saved", fontSize = 9.sp, color = colors.textSecondary)
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -2008,8 +1996,13 @@ fun FinancialRatiosCard(
                         text = String.format("%.0f%%", expenseRatio),
                         fontFamily = NothingGlyph,
                         fontSize = 22.sp,
-                        color = colors.negative
+                        color = when {
+                            expenseRatio <= 50  -> colors.positive
+                            expenseRatio <= 80  -> Color(0xFFFFA726)
+                            else               -> colors.negative
+                        }
                     )
+                    Text(text = "of income spent", fontSize = 9.sp, color = colors.textSecondary)
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -2020,8 +2013,13 @@ fun FinancialRatiosCard(
                         text = String.format("%.0f%%", borrowRatio),
                         fontFamily = NothingGlyph,
                         fontSize = 22.sp,
-                        color = colors.textPrimary
+                        color = when {
+                            borrowRatio == 0.0 -> colors.textPrimary
+                            borrowRatio <= 20  -> Color(0xFFFFA726)
+                            else              -> colors.negative
+                        }
                     )
+                    Text(text = "of income borrowed", fontSize = 9.sp, color = colors.textSecondary)
                 }
             }
         }
@@ -2348,7 +2346,7 @@ fun AnalyticsFooter() {
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = "DELTA ANALYTICS · LOCAL ROOM DB",
+            text = "DELTA ANALYTICS · v1.0 · LOCAL ROOM DB",
             fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             color = colors.textSecondary.copy(alpha = 0.8f),
@@ -2356,12 +2354,20 @@ fun AnalyticsFooter() {
             letterSpacing = 1.sp
         )
         Text(
-            text = "All calculations are done securely on-device. Overview cards define key metrics when clicked. Exports are formatted as CSV spreadsheets.",
+            text = "All calculations are done securely on-device. Overview cards explain key metrics when clicked. Exports are formatted as CSV spreadsheets compatible with Excel and Google Sheets.",
             fontSize = 10.sp,
             color = colors.textSecondary.copy(alpha = 0.6f),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 32.dp),
             lineHeight = 14.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "\u00a9 2025 Delta · daniel-17gr",
+            fontSize = 9.sp,
+            color = colors.textSecondary.copy(alpha = 0.4f),
+            fontFamily = NothingGlyph,
+            letterSpacing = 0.5.sp
         )
     }
 }
