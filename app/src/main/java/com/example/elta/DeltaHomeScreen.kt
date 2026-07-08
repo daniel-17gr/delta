@@ -9,6 +9,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.EaseOutQuart
+import androidx.compose.animation.core.EaseInQuart
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.shrinkVertically
@@ -907,6 +910,11 @@ fun DeltaHomeScreen(
     }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val drawerProgress by animateFloatAsState(
+        targetValue = if (drawerState.targetValue == DrawerValue.Open) 1f else 0f,
+        animationSpec = tween(durationMillis = 350, easing = EaseOutQuart),
+        label = "DrawerProgress"
+    )
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -919,6 +927,7 @@ fun DeltaHomeScreen(
                     .fillMaxHeight()
                     .border(1.dp, colors.border, RectangleShape)
             ) {
+                val drawerItemsVisible = drawerState.targetValue == DrawerValue.Open
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -928,22 +937,41 @@ fun DeltaHomeScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
-                        Text(
-                            text = "SETTINGS",
-                            fontSize = 24.sp,
-                            fontFamily = NothingGlyph,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textPrimary,
-                            letterSpacing = 1.sp,
-                            modifier = Modifier.padding(vertical = 12.dp)
+                        val headerAnimProgress by animateFloatAsState(
+                            targetValue = if (drawerItemsVisible) 1f else 0f,
+                            animationSpec = tween(
+                                durationMillis = 400,
+                                delayMillis = 50,
+                                easing = EaseOutQuart
+                            ),
+                            label = "SettingsHeaderAnim"
                         )
-                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+                        Column(
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    alpha = headerAnimProgress
+                                    translationX = (1f - headerAnimProgress) * -30.dp.toPx()
+                                }
+                        ) {
+                            Text(
+                                text = "SETTINGS",
+                                fontSize = 24.sp,
+                                fontFamily = NothingGlyph,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.textPrimary,
+                                letterSpacing = 1.sp,
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
+                            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+                        }
                     }
                     
                     item {
-                        DrawerItem(
+                        AnimatedDrawerItem(
                             iconRes = R.drawable.ic_profile,
                             label = "PROFILE & SYNC",
+                            visible = drawerItemsVisible,
+                            index = 1,
                             onClick = {
                                 coroutineScope.launch { drawerState.close() }
                                 onNavigateToProfile()
@@ -951,9 +979,11 @@ fun DeltaHomeScreen(
                         )
                     }
                     item {
-                        DrawerItem(
+                        AnimatedDrawerItem(
                             iconRes = R.drawable.analytics,
                             label = "ANALYTICS",
+                            visible = drawerItemsVisible,
+                            index = 2,
                             onClick = {
                                 coroutineScope.launch { drawerState.close() }
                                 onNavigateToAnalytics()
@@ -961,9 +991,11 @@ fun DeltaHomeScreen(
                         )
                     }
                     item {
-                        DrawerItem(
+                        AnimatedDrawerItem(
                             iconRes = R.drawable.ic_trash,
                             label = "TRASH BIN",
+                            visible = drawerItemsVisible,
+                            index = 3,
                             onClick = {
                                 coroutineScope.launch { drawerState.close() }
                                 onNavigateToTrash()
@@ -971,9 +1003,11 @@ fun DeltaHomeScreen(
                         )
                     }
                     item {
-                        DrawerItem(
+                        AnimatedDrawerItem(
                             iconRes = if (isDark) R.drawable.sun else R.drawable.moon,
                             label = if (isDark) "LIGHT MODE" else "DARK MODE",
+                            visible = drawerItemsVisible,
+                            index = 4,
                             onClick = {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onToggleTheme()
@@ -981,9 +1015,11 @@ fun DeltaHomeScreen(
                         )
                     }
                     item {
-                        DrawerItem(
+                        AnimatedDrawerItem(
                             iconRes = R.drawable.currencies,
                             label = "CHANGE CURRENCY",
+                            visible = drawerItemsVisible,
+                            index = 5,
                             onClick = {
                                 coroutineScope.launch { drawerState.close() }
                                 showCurrencyPicker = true
@@ -991,23 +1027,64 @@ fun DeltaHomeScreen(
                         )
                     }
                     item {
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Text(
-                            text = "DELTA V1.0",
-                            fontSize = 11.sp,
-                            fontFamily = NothingGlyph,
-                            color = colors.textSecondary.copy(alpha = 0.5f),
-                            letterSpacing = 1.sp
+                        val footerAnimProgress by animateFloatAsState(
+                            targetValue = if (drawerItemsVisible) 1f else 0f,
+                            animationSpec = tween(
+                                durationMillis = 400,
+                                delayMillis = 50 + 6 * 60,
+                                easing = EaseOutQuart
+                            ),
+                            label = "FooterAnim"
                         )
+                        Column(
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    alpha = footerAnimProgress
+                                    translationX = (1f - footerAnimProgress) * -40.dp.toPx()
+                                }
+                        ) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "DELTA V1.0",
+                                fontSize = 11.sp,
+                                fontFamily = NothingGlyph,
+                                color = colors.textSecondary.copy(alpha = 0.5f),
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                 }
             }
         }
     ) {
+        val density = LocalDensity.current
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .background(colors.background)
+                .graphicsLayer {
+                    val scale = 1f - (drawerProgress * 0.08f)
+                    this.scaleX = scale
+                    this.scaleY = scale
+                    this.translationX = drawerProgress * with(density) { 260.dp.toPx() }
+                    this.clip = drawerProgress > 0f
+                    this.shape = RoundedCornerShape(
+                        topStart = drawerProgress * with(density) { 24.dp.toPx() },
+                        bottomStart = drawerProgress * with(density) { 24.dp.toPx() },
+                        topEnd = 0f,
+                        bottomEnd = 0f
+                    )
+                }
+                .border(
+                    width = (drawerProgress * 1).dp,
+                    color = colors.border.copy(alpha = drawerProgress),
+                    shape = RoundedCornerShape(
+                        topStart = (drawerProgress * 24).dp,
+                        bottomStart = (drawerProgress * 24).dp,
+                        topEnd = 0.dp,
+                        bottomEnd = 0.dp
+                    )
+                )
         ) {
         val isLandscape = maxWidth > maxHeight
 
@@ -1784,6 +1861,35 @@ private fun DrawerItem(
             color = colors.textPrimary,
             letterSpacing = 1.sp
         )
+    }
+}
+
+@Composable
+private fun AnimatedDrawerItem(
+    iconRes: Int,
+    label: String,
+    visible: Boolean,
+    index: Int,
+    onClick: () -> Unit
+) {
+    val animProgress by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = 400,
+            delayMillis = 50 + index * 60,
+            easing = EaseOutQuart
+        ),
+        label = "DrawerItemAnim_$index"
+    )
+
+    Box(
+        modifier = Modifier
+            .graphicsLayer {
+                alpha = animProgress
+                translationX = (1f - animProgress) * -40.dp.toPx()
+            }
+    ) {
+        DrawerItem(iconRes = iconRes, label = label, onClick = onClick)
     }
 }
 
