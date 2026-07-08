@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.elta" />
+                  <option name="mobileSdkAppId" value="1:547753792459:android:91220c0af97ec712995c4e" />
+                  <option name="projectId" value="awallet-7d6ba" />
+                  <option name="projectNumber" value="547753792459" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,12 +46,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.Icon
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,6 +77,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -97,6 +105,11 @@ import com.example.elta.data.TransactionType
 import com.example.elta.data.CustomCurrency
 import com.example.elta.ui.theme.LocalDeltaColors
 import com.example.elta.ui.theme.LocalAppCurrency
+import com.example.elta.ui.theme.NothingGlyph
+import com.example.elta.ui.theme.DeltaShapes
+import com.example.elta.ui.theme.DeltaDialog
+import com.example.elta.ui.theme.DeltaButton
+import com.example.elta.ui.theme.DeltaButtonStyle
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -134,10 +147,6 @@ data class CategoryItem(
     val type: TransactionType
 )
 
-// Load Nothing Dot Matrix Font
-val NothingGlyph = FontFamily(
-    Font(R.font.nothing_glyph, FontWeight.Normal)
-)
 
 val allCategories = listOf(
     // === IN
@@ -342,174 +351,137 @@ fun CustomCurrencyEditDialog(
     var symbolText by remember { mutableStateOf(customCurrency?.symbol ?: "") }
     var errorMsg by remember { mutableStateOf<String?>(null) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(colors.surface)
-                .border(1.dp, colors.border, RoundedCornerShape(16.dp))
-                .padding(20.dp)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(260.dp)
-            ) {
-                Text(
-                    text = if (customCurrency == null) "ADD CUSTOM" else "EDIT CUSTOM",
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = NothingGlyph,
-                    fontSize = 16.sp,
-                    color = colors.textPrimary,
-                    letterSpacing = 1.sp,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+    DeltaDialog(onDismissRequest = onDismiss) {
+        Text(
+            text = if (customCurrency == null) "ADD CUSTOM" else "EDIT CUSTOM",
+            fontWeight = FontWeight.Bold,
+            fontFamily = NothingGlyph,
+            fontSize = 16.sp,
+            color = colors.textPrimary,
+            letterSpacing = 1.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
 
-                BasicTextField(
-                    value = codeText,
-                    onValueChange = { newValue ->
-                        if (newValue.length <= 3 && newValue.all { it.isLetter() }) {
-                            codeText = newValue.uppercase()
-                        }
-                    },
-                    textStyle = TextStyle(
-                        color = colors.textPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = NothingGlyph
-                    ),
-                    cursorBrush = SolidColor(colors.textPrimary),
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(colors.buttonBackground, RoundedCornerShape(8.dp))
-                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
-                                .padding(12.dp)
-                        ) {
-                            if (codeText.isEmpty()) {
-                                Text(
-                                    text = "CODE (E.G. USD)",
-                                    color = colors.textSecondary,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = NothingGlyph
-                                )
-                            }
-                            innerTextField()
-                        }
-                    }
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                BasicTextField(
-                    value = symbolText,
-                    onValueChange = { newValue ->
-                        if (newValue.length < 4) {
-                            symbolText = newValue
-                        }
-                    },
-                    textStyle = TextStyle(
-                        color = colors.textPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = NothingGlyph
-                    ),
-                    cursorBrush = SolidColor(colors.textPrimary),
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(colors.buttonBackground, RoundedCornerShape(8.dp))
-                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
-                                .padding(12.dp)
-                        ) {
-                            if (symbolText.isEmpty()) {
-                                Text(
-                                    text = "SYMBOL (E.G. $)",
-                                    color = colors.textSecondary,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = NothingGlyph
-                                )
-                            }
-                            innerTextField()
-                        }
-                    }
-                )
-
-                if (errorMsg != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = errorMsg!!,
-                        color = colors.negative,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = NothingGlyph
-                    )
+        BasicTextField(
+            value = codeText,
+            onValueChange = { newValue ->
+                if (newValue.length <= 3 && newValue.all { it.isLetter() }) {
+                    codeText = newValue.uppercase()
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+            },
+            textStyle = TextStyle(
+                color = colors.textPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Default
+            ),
+            cursorBrush = SolidColor(colors.textPrimary),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.buttonBackground, DeltaShapes.Input)
+                        .border(1.dp, colors.border, DeltaShapes.Input)
+                        .padding(12.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 6.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.buttonBackground)
-                            .clickable { onDismiss() }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    if (codeText.isEmpty()) {
                         Text(
-                            text = "CANCEL",
-                            color = colors.textPrimary,
-                            fontSize = 12.sp,
+                            text = "CODE (E.G. USD)",
+                            color = colors.textSecondary,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = NothingGlyph
+                            fontFamily = FontFamily.Default
                         )
                     }
-
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start = 6.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.textPrimary)
-                            .clickable {
-                                val codeTrimmed = codeText.trim().uppercase()
-                                val symbolTrimmed = symbolText.trim()
-
-                                if (codeTrimmed.length != 3) {
-                                    errorMsg = "CODE MUST BE 3 LETTERS"
-                                } else if (symbolTrimmed.isEmpty()) {
-                                    errorMsg = "SYMBOL CANNOT BE EMPTY"
-                                } else if (AppCurrency.entries.any { it.code == codeTrimmed }) {
-                                    errorMsg = "DEFAULT CODE ALREADY EXISTS"
-                                } else if (customCurrencies.any { it.id != (customCurrency?.id ?: -1) && it.code.uppercase() == codeTrimmed }) {
-                                    errorMsg = "CUSTOM CODE ALREADY EXISTS"
-                                } else {
-                                    onSave(codeTrimmed, symbolTrimmed)
-                                    onDismiss()
-                                }
-                            }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "SAVE",
-                            color = colors.background,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = NothingGlyph
-                        )
-                    }
+                    innerTextField()
                 }
             }
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        BasicTextField(
+            value = symbolText,
+            onValueChange = { newValue ->
+                if (newValue.length < 4) {
+                    symbolText = newValue
+                }
+            },
+            textStyle = TextStyle(
+                color = colors.textPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Default
+            ),
+            cursorBrush = SolidColor(colors.textPrimary),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.buttonBackground, DeltaShapes.Input)
+                        .border(1.dp, colors.border, DeltaShapes.Input)
+                        .padding(12.dp)
+                ) {
+                    if (symbolText.isEmpty()) {
+                        Text(
+                            text = "SYMBOL (E.G. $)",
+                            color = colors.textSecondary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Default
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        )
+
+        if (errorMsg != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = errorMsg!!,
+                color = colors.negative,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Default
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            DeltaButton(
+                text = "CANCEL",
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f),
+                style = DeltaButtonStyle.Secondary
+            )
+
+            DeltaButton(
+                text = "SAVE",
+                onClick = {
+                    val codeTrimmed = codeText.trim().uppercase()
+                    val symbolTrimmed = symbolText.trim()
+
+                    if (codeTrimmed.length != 3) {
+                        errorMsg = "CODE MUST BE 3 LETTERS"
+                    } else if (symbolTrimmed.isEmpty()) {
+                        errorMsg = "SYMBOL CANNOT BE EMPTY"
+                    } else if (AppCurrency.entries.any { it.code == codeTrimmed }) {
+                        errorMsg = "DEFAULT CODE ALREADY EXISTS"
+                    } else if (customCurrencies.any { it.id != (customCurrency?.id ?: -1) && it.code.uppercase() == codeTrimmed }) {
+                        errorMsg = "CUSTOM CODE ALREADY EXISTS"
+                    } else {
+                        onSave(codeTrimmed, symbolTrimmed)
+                        onDismiss()
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                style = DeltaButtonStyle.Primary
+            )
         }
     }
 }
@@ -534,212 +506,189 @@ fun CurrencyPickerDialog(
     var editingCustomCurrency by remember { mutableStateOf<CustomCurrency?>(null) }
     var showAddCustomCurrency by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
+    DeltaDialog(onDismissRequest = onDismiss) {
+        Text(
+            fontWeight = FontWeight.Bold,
+            text = "SELECT CURRENCY",
+            fontFamily = NothingGlyph,
+            fontSize = 16.sp,
+            color = colors.textPrimary,
+            letterSpacing = 1.sp
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(colors.surface)
-                .border(1.dp, colors.border, RoundedCornerShape(16.dp))
-                .padding(20.dp)
+                .fillMaxWidth()
+                .heightIn(max = 280.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(280.dp)
-            ) {
-                Text(
-                    fontWeight = FontWeight.Bold,
-                    text = "SELECT CURRENCY",
-                    fontFamily = NothingGlyph,
-                    fontSize = 16.sp,
-                    color = colors.textPrimary,
-                    letterSpacing = 1.sp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Column(
+            Text(
+                text = "DEFAULTS",
+                fontFamily = NothingGlyph,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.textSecondary,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
+            )
+            
+            defaultCurrencies.forEach { info ->
+                val isSelected = currentCurrency.code.uppercase() == info.code.uppercase() && !currentCurrency.isCustom
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 280.dp)
-                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 2.dp)
+                        .clip(DeltaShapes.RowItem)
+                        .background(if (isSelected) colors.textPrimary else Color.Transparent)
+                        .clickable {
+                            onCurrencySelect(info.code)
+                            onDismiss()
+                        }
+                        .padding(vertical = 10.dp, horizontal = 12.dp)
                 ) {
-                    Text(
-                        text = "DEFAULTS",
-                        fontFamily = NothingGlyph,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textSecondary,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.padding(bottom = 6.dp, top = 4.dp)
-                    )
-                    
-                    defaultCurrencies.forEach { info ->
-                        val isSelected = currentCurrency.code.uppercase() == info.code.uppercase() && !currentCurrency.isCustom
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) colors.textPrimary else Color.Transparent)
-                                .clickable {
-                                    onCurrencySelect(info.code)
-                                    onDismiss()
-                                }
-                                .padding(vertical = 10.dp, horizontal = 12.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (info.code == "NONE") "NONE" else "${info.code} (${info.symbol})",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) colors.background else colors.textPrimary,
+                            fontFamily = FontFamily.Default
+                        )
+                        if (isSelected) {
+                            Text(
+                                text = "✓",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.background
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "CUSTOM (${customCurrencies.size}/10)",
+                fontFamily = NothingGlyph,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = colors.textSecondary,
+                letterSpacing = 1.sp,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+
+            if (customCurrencies.isEmpty()) {
+                Text(
+                    text = "NO CUSTOM CURRENCIES",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textSecondary,
+                    fontFamily = FontFamily.Default,
+                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
+                )
+            } else {
+                customCurrencies.forEach { custom ->
+                    val isSelected = currentCurrency.isCustom && currentCurrency.code.uppercase() == custom.code.uppercase()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                            .clip(DeltaShapes.RowItem)
+                            .background(if (isSelected) colors.textPrimary.copy(alpha = 0.15f) else Color.Transparent)
+                            .border(1.dp, if (isSelected) colors.textPrimary else colors.border, DeltaShapes.RowItem)
+                            .padding(vertical = 8.dp, horizontal = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        onCurrencySelect(custom.code)
+                                        onDismiss()
+                                    },
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (info.code == "NONE") "NONE" else "${info.code} (${info.symbol})",
+                                    text = "${custom.code} (${custom.symbol})",
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) colors.background else colors.textPrimary,
-                                    fontFamily = NothingGlyph
+                                    color = colors.textPrimary,
+                                    fontFamily = FontFamily.Default
                                 )
                                 if (isSelected) {
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = "✓",
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = colors.background
+                                        color = colors.textPrimary
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(DeltaShapes.Badge)
+                                        .background(colors.buttonBackground)
+                                        .clickable { editingCustomCurrency = custom }
+                                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "EDIT",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.textPrimary,
+                                        fontFamily = FontFamily.Default
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(6.dp))
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(DeltaShapes.Badge)
+                                        .background(colors.negative.copy(alpha = 0.15f))
+                                        .clickable { onDeleteCustomCurrency(custom) }
+                                        .padding(horizontal = 6.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "DEL",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colors.negative,
+                                        fontFamily = FontFamily.Default
                                     )
                                 }
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "CUSTOM (${customCurrencies.size}/10)",
-                        fontFamily = NothingGlyph,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textSecondary,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-
-                    if (customCurrencies.isEmpty()) {
-                        Text(
-                            text = "NO CUSTOM CURRENCIES",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.textSecondary,
-                            fontFamily = NothingGlyph,
-                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
-                        )
-                    } else {
-                        customCurrencies.forEach { custom ->
-                            val isSelected = currentCurrency.isCustom && currentCurrency.code.uppercase() == custom.code.uppercase()
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(if (isSelected) colors.textPrimary.copy(alpha = 0.15f) else Color.Transparent)
-                                    .border(1.dp, if (isSelected) colors.textPrimary else colors.border, RoundedCornerShape(8.dp))
-                                    .padding(vertical = 8.dp, horizontal = 12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clickable {
-                                                onCurrencySelect(custom.code)
-                                                onDismiss()
-                                            },
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${custom.code} (${custom.symbol})",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = colors.textPrimary,
-                                            fontFamily = NothingGlyph
-                                        )
-                                        if (isSelected) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "✓",
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textPrimary
-                                            )
-                                        }
-                                    }
-
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(colors.buttonBackground)
-                                                .clickable { editingCustomCurrency = custom }
-                                                .padding(horizontal = 6.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = "EDIT",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.textPrimary,
-                                                fontFamily = NothingGlyph
-                                            )
-                                        }
-
-                                        Spacer(modifier = Modifier.width(6.dp))
-
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(colors.negative.copy(alpha = 0.15f))
-                                                .clickable { onDeleteCustomCurrency(custom) }
-                                                .padding(horizontal = 6.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(
-                                                text = "DEL",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = colors.negative,
-                                                fontFamily = NothingGlyph
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                val canAdd = customCurrencies.size < 10
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (canAdd) colors.textPrimary else colors.buttonBackground)
-                        .clickable(enabled = canAdd) { showAddCustomCurrency = true }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (canAdd) "+ ADD CUSTOM" else "LIMIT REACHED (10/10)",
-                        color = if (canAdd) colors.background else colors.textSecondary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = NothingGlyph
-                    )
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        val canAdd = customCurrencies.size < 10
+        DeltaButton(
+            text = if (canAdd) "+ ADD CUSTOM" else "LIMIT REACHED (10/10)",
+            onClick = { showAddCustomCurrency = true },
+            enabled = canAdd,
+            modifier = Modifier.fillMaxWidth(),
+            style = if (canAdd) DeltaButtonStyle.Primary else DeltaButtonStyle.Secondary
+        )
     }
 
     if (showAddCustomCurrency) {
@@ -771,110 +720,62 @@ fun TransactionOptionsDialog(
     onDismiss: () -> Unit
 ) {
     val colors = LocalDeltaColors.current
-    Dialog(onDismissRequest = onDismiss) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(colors.surface)
-                .border(1.dp, colors.border, RoundedCornerShape(16.dp))
-                .padding(20.dp)
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(260.dp)
-            ) {
-                Text(
-                        fontWeight = FontWeight.Bold,
-                    text = "TRANSACTION OPTIONS",
-                    fontFamily = NothingGlyph,
-                    fontSize = 15.sp,
-                    color = colors.textPrimary,
-                    letterSpacing = 1.sp,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "${transaction.category} • ${if (transaction.amount >= 0) "+" else ""}${String.format("%,.2f", transaction.amount)}",
-                    fontSize = 13.sp,
-                    color = colors.textSecondary,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(20.dp))
+    DeltaDialog(onDismissRequest = onDismiss) {
+        Text(
+            fontWeight = FontWeight.Bold,
+            text = "TRANSACTION OPTIONS",
+            fontFamily = NothingGlyph,
+            fontSize = 15.sp,
+            color = colors.textPrimary,
+            letterSpacing = 1.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "${transaction.category} • ${if (transaction.amount >= 0) "+" else ""}${String.format("%,.2f", transaction.amount)}",
+            fontSize = 13.sp,
+            color = colors.textSecondary,
+            textAlign = TextAlign.Center,
+            fontFamily = FontFamily.Default
+        )
+        Spacer(modifier = Modifier.height(20.dp))
 
-                // EDIT Button
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(colors.buttonBackground)
-                        .clickable {
-                            onEdit()
-                            onDismiss()
-                        }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "EDIT",
-                        fontFamily = NothingGlyph,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary,
-                        letterSpacing = 1.sp
-                    )
-                }
+        // EDIT Button
+        DeltaButton(
+            text = "EDIT",
+            onClick = {
+                onEdit()
+                onDismiss()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            style = DeltaButtonStyle.Secondary
+        )
 
-                Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-                // DELETE Button
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFFF2D00)) // Signature Nothing red
-                        .clickable {
-                            onDelete()
-                            onDismiss()
-                        }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "DELETE",
-                        fontFamily = NothingGlyph,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        letterSpacing = 1.sp
-                    )
-                }
+        // DELETE Button
+        DeltaButton(
+            text = "DELETE",
+            onClick = {
+                onDelete()
+                onDismiss()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            style = DeltaButtonStyle.Negative
+        )
 
-                Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-                // CANCEL Button
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable {
-                            onDismiss()
-                        }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        fontWeight = FontWeight.Bold,
-                        text = "CANCEL",
-                        fontFamily = NothingGlyph,
-                        fontSize = 13.sp,
-                        color = colors.textSecondary,
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
-        }
+        // CANCEL Button
+        DeltaButton(
+            text = "CANCEL",
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth(),
+            style = DeltaButtonStyle.Text
+        )
     }
 }
+
 
 @Composable
 fun DeltaHomeScreen(
@@ -883,6 +784,8 @@ fun DeltaHomeScreen(
     totalIncome: Double,
     totalExpense: Double,
     customCurrencies: List<CustomCurrency>,
+    syncStatus: com.example.elta.data.SyncStatus = com.example.elta.data.SyncStatus.IDLE,
+    isSyncPaused: Boolean = false,
     onAddTransaction: (amount: Double, category: String, type: TransactionType) -> Unit,
     onDeleteTransaction: (Transaction) -> Unit,
     onUpdateTransaction: (Transaction) -> Unit,
@@ -890,12 +793,29 @@ fun DeltaHomeScreen(
     onUpdateCustomCurrency: (CustomCurrency) -> Unit,
     onDeleteCustomCurrency: (CustomCurrency) -> Unit,
     onNavigateToAnalytics: () -> Unit,
+    onNavigateToTrash: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     onToggleTheme: () -> Unit,
-    onSelectCurrency: (String) -> Unit
+    onSelectCurrency: (String) -> Unit,
+    onSync: () -> Unit = {}
 ) {
     val colors = LocalDeltaColors.current
     val currentCurrency = LocalAppCurrency.current
     val isDark = colors.background == Color.Black
+
+    val syncIconRes = when {
+        isSyncPaused -> R.drawable.ic_cloud_alert
+        syncStatus == com.example.elta.data.SyncStatus.SYNCING -> R.drawable.ic_cloud_sync
+        syncStatus == com.example.elta.data.SyncStatus.SUCCESS -> R.drawable.ic_cloud_check
+        syncStatus == com.example.elta.data.SyncStatus.ERROR -> R.drawable.ic_cloud_alert
+        else -> R.drawable.ic_cloud_backup
+    }
+    val syncIconTint = when {
+        isSyncPaused -> colors.textSecondary.copy(alpha = 0.5f)
+        syncStatus == com.example.elta.data.SyncStatus.SUCCESS -> colors.positive
+        syncStatus == com.example.elta.data.SyncStatus.ERROR -> colors.negative
+        else -> colors.textPrimary
+    }
 
     val historyListState = rememberLazyListState()
 
@@ -986,11 +906,109 @@ fun DeltaHomeScreen(
         )
     }
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.background)
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = colors.background,
+                drawerShape = RectangleShape,
+                modifier = Modifier
+                    .width(300.dp)
+                    .fillMaxHeight()
+                    .border(1.dp, colors.border, RectangleShape)
+            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    contentPadding = PaddingValues(vertical = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "SETTINGS",
+                            fontSize = 24.sp,
+                            fontFamily = NothingGlyph,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.textPrimary,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
+                        Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+                    }
+                    
+                    item {
+                        DrawerItem(
+                            iconRes = R.drawable.ic_profile,
+                            label = "PROFILE & SYNC",
+                            onClick = {
+                                coroutineScope.launch { drawerState.close() }
+                                onNavigateToProfile()
+                            }
+                        )
+                    }
+                    item {
+                        DrawerItem(
+                            iconRes = R.drawable.analytics,
+                            label = "ANALYTICS",
+                            onClick = {
+                                coroutineScope.launch { drawerState.close() }
+                                onNavigateToAnalytics()
+                            }
+                        )
+                    }
+                    item {
+                        DrawerItem(
+                            iconRes = R.drawable.ic_trash,
+                            label = "TRASH BIN",
+                            onClick = {
+                                coroutineScope.launch { drawerState.close() }
+                                onNavigateToTrash()
+                            }
+                        )
+                    }
+                    item {
+                        DrawerItem(
+                            iconRes = if (isDark) R.drawable.sun else R.drawable.moon,
+                            label = if (isDark) "LIGHT MODE" else "DARK MODE",
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onToggleTheme()
+                            }
+                        )
+                    }
+                    item {
+                        DrawerItem(
+                            iconRes = R.drawable.currencies,
+                            label = "CHANGE CURRENCY",
+                            onClick = {
+                                coroutineScope.launch { drawerState.close() }
+                                showCurrencyPicker = true
+                            }
+                        )
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "DELTA V1.0",
+                            fontSize = 11.sp,
+                            fontFamily = NothingGlyph,
+                            color = colors.textSecondary.copy(alpha = 0.5f),
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            }
+        }
     ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colors.background)
+        ) {
         val isLandscape = maxWidth > maxHeight
 
         if (isLandscape) {
@@ -1005,47 +1023,58 @@ fun DeltaHomeScreen(
                     modifier = Modifier
                         .weight(1.1f)
                         .fillMaxHeight()
-                        .verticalScroll(rememberScrollState())
                 ) {
                     // Top Bar
                     Row(
                         modifier = Modifier
+                            .statusBarsPadding()
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp),
+                            .padding(vertical = 16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                        fontWeight = FontWeight.Bold,
-                            text = stringResource(R.string.app_name),
-                            fontFamily = NothingGlyph,
-                            fontSize = 28.sp,
-                            color = colors.textPrimary,
-                            letterSpacing = 1.sp
-                        )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(colors.buttonBackground)
+                                    .border(1.dp, colors.border, RoundedCornerShape(8.dp))
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        showCurrencyPicker = true
+                                        coroutineScope.launch { drawerState.open() }
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.currencies),
-                                    contentDescription = "Currency selector",
+                                    painter = painterResource(id = R.drawable.ic_menu),
+                                    contentDescription = "Open Settings",
                                     tint = colors.textPrimary,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
+                            Text(
+                                fontWeight = FontWeight.Bold,
+                                text = "DELTA",
+                                fontFamily = NothingGlyph,
+                                fontSize = 24.sp,
+                                color = colors.textPrimary,
+                                letterSpacing = 1.sp
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(colors.buttonBackground)
+                                    .border(1.dp, colors.border, RoundedCornerShape(8.dp))
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         showAmounts = !showAmounts
@@ -1054,42 +1083,27 @@ fun DeltaHomeScreen(
                             ) {
                                 Icon(
                                     painter = painterResource(id = if (showAmounts) R.drawable.eye else R.drawable.eye_off),
-                                    contentDescription = "Toggle Show/Hide Amounts",
+                                    contentDescription = "Toggle Amounts",
                                     tint = colors.textPrimary,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(colors.buttonBackground)
+                                    .border(1.dp, colors.border, RoundedCornerShape(8.dp))
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onToggleTheme()
+                                        onSync()
                                     },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    painter = painterResource(id = if (isDark) R.drawable.sun else R.drawable.moon),
-                                    contentDescription = "Toggle Theme",
-                                    tint = colors.textPrimary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(RoundedCornerShape(50))
-                                    .background(colors.textPrimary)
-                                    .clickable {
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onNavigateToAnalytics()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.analytics),
-                                    contentDescription = "Navigate to analytics",
-                                    tint = colors.background,
+                                    painter = painterResource(id = syncIconRes),
+                                    contentDescription = "Sync Data",
+                                    tint = syncIconTint,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -1098,6 +1112,14 @@ fun DeltaHomeScreen(
 
                     // Divider
                     Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+
+                    // Scrollable Overview content
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
 
                     // Net Balance Block
                     Column(
@@ -1249,6 +1271,7 @@ fun DeltaHomeScreen(
 
                     // Divider
                     Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(24.dp))
@@ -1281,42 +1304,54 @@ fun DeltaHomeScreen(
                 // 1. Top Bar
                 Row(
                     modifier = Modifier
+                        .statusBarsPadding()
                         .fillMaxWidth()
-                        .padding(vertical = 24.dp),
+                        .padding(vertical = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        fontWeight = FontWeight.Bold,
-                        text = "Delta",
-                        fontFamily = NothingGlyph,
-                        fontSize = 28.sp,
-                        color = colors.textPrimary,
-                        letterSpacing = 1.sp
-                    )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(colors.buttonBackground)
+                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    showCurrencyPicker = true
+                                    coroutineScope.launch { drawerState.open() }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.currencies),
-                                contentDescription = "Currency selector",
+                                painter = painterResource(id = R.drawable.ic_menu),
+                                contentDescription = "Open Settings",
                                 tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
+                        Text(
+                            fontWeight = FontWeight.Bold,
+                            text = "DELTA",
+                            fontFamily = NothingGlyph,
+                            fontSize = 24.sp,
+                            color = colors.textPrimary,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(colors.buttonBackground)
+                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     showAmounts = !showAmounts
@@ -1325,42 +1360,27 @@ fun DeltaHomeScreen(
                         ) {
                             Icon(
                                 painter = painterResource(id = if (showAmounts) R.drawable.eye else R.drawable.eye_off),
-                                contentDescription = "Toggle Show/Hide Amounts",
+                                contentDescription = "Toggle Amounts",
                                 tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(colors.buttonBackground)
+                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onToggleTheme()
+                                    onSync()
                                 },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = if (isDark) R.drawable.sun else R.drawable.moon),
-                                contentDescription = "Toggle Theme",
-                                tint = colors.textPrimary,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(colors.textPrimary)
-                                .clickable {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    onNavigateToAnalytics()
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.analytics),
-                                contentDescription = "Navigate to analytics",
-                                tint = colors.background,
+                                painter = painterResource(id = syncIconRes),
+                                contentDescription = "Sync Data",
+                                tint = syncIconTint,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -1730,6 +1750,40 @@ fun DeltaHomeScreen(
             amountText = savedAnimationAmount,
             onFinished = { showSavedAnimation = false }
         )
+        }
+    }
+}
+
+@Composable
+private fun DrawerItem(
+    iconRes: Int,
+    label: String,
+    onClick: () -> Unit
+) {
+    val colors = LocalDeltaColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(vertical = 12.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = iconRes),
+            contentDescription = label,
+            tint = colors.textPrimary,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontFamily = NothingGlyph,
+            fontWeight = FontWeight.Bold,
+            color = colors.textPrimary,
+            letterSpacing = 1.sp
+        )
     }
 }
 
@@ -1746,7 +1800,7 @@ fun TransactionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(DeltaShapes.RowItem)
             .background(colors.surface)
             .clickable { onClick() }
             .padding(horizontal = 14.dp, vertical = 12.dp),
@@ -1901,7 +1955,7 @@ fun TransactionHistoryList(
                                 val isActive = filter == activeFilter
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
+                                        .clip(DeltaShapes.Chip)
                                         .background(if (isActive) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1924,7 +1978,7 @@ fun TransactionHistoryList(
                             if (grouped.size > 1) {
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
+                                        .clip(DeltaShapes.Chip)
                                         .background(if (showJumpBar) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1956,7 +2010,7 @@ fun TransactionHistoryList(
                                 val isActive = filter == activeFilter
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
+                                        .clip(DeltaShapes.Chip)
                                         .background(if (isActive) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1981,7 +2035,7 @@ fun TransactionHistoryList(
                             if (grouped.size > 1) {
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
+                                        .clip(DeltaShapes.Chip)
                                         .background(if (showJumpBar) colors.textPrimary else if (isDark) Color(0xFF2C2C2C) else Color(0xFFD8D8D8))
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -2017,8 +2071,8 @@ fun TransactionHistoryList(
                             items(visibleDateLabels, key = { it.first }) { (dateKey, label) ->
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                        .clip(DeltaShapes.Button)
+                                        .border(1.dp, colors.border, DeltaShapes.Button)
                                         .background(colors.surface)
                                         .clickable {
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)

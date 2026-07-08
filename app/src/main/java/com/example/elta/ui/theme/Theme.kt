@@ -1,7 +1,5 @@
 package com.example.elta.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -16,7 +14,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.example.elta.AppCurrency
 import com.example.elta.CurrencyInfo
 
 private val DarkColorScheme = darkColorScheme(
@@ -109,14 +106,14 @@ val LocalDeltaColors = staticCompositionLocalOf { DarkDeltaColors }
 val LocalAppCurrency = staticCompositionLocalOf { CurrencyInfo("EUR", "€") }
 
 @Composable
-fun ΔeltaTheme(
+fun DeltaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        dynamicColor -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }

@@ -7,6 +7,7 @@ class TransactionRepository(
     private val customCurrencyDao: CustomCurrencyDao
 ) {
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
+    val deletedTransactions: Flow<List<Transaction>> = transactionDao.getDeletedTransactions()
 
     val netBalance: Flow<Double> = transactionDao.getNetBalance()
     val totalIncome: Flow<Double> = transactionDao.getTotalByTypes(listOf("INCOME", "BORROWED"))
@@ -20,9 +21,34 @@ class TransactionRepository(
 
     suspend fun deleteById(id: Long) = transactionDao.deleteTransactionById(id)
 
-    suspend fun insertCustomCurrency(customCurrency: CustomCurrency) = customCurrencyDao.insertCustomCurrency(customCurrency)
+    suspend fun softDelete(uuid: String) = transactionDao.softDeleteTransactionByUuid(uuid)
 
-    suspend fun deleteCustomCurrency(customCurrency: CustomCurrency) = customCurrencyDao.deleteCustomCurrency(customCurrency)
+    suspend fun restoreTransaction(uuid: String) = transactionDao.restoreTransactionByUuid(uuid)
+
+    suspend fun deleteTransactionPermanently(uuid: String) = transactionDao.cleanPermanentDelete(uuid)
+
+    suspend fun clearTrash() {
+        val deleted = transactionDao.getDeletedTransactionsSync()
+        if (deleted.isNotEmpty()) {
+            transactionDao.markTrashForPermanentSync(deleted.map { it.uuid })
+            deleted.forEach { transactionDao.cleanPermanentDelete(it.uuid) }
+        }
+    }
+
+    suspend fun clearAllLocalData() {
+        transactionDao.deleteAllTransactions()
+        // Keep custom currencies — user defined those
+    }
+
+    suspend fun getUnsyncedTransactions() = transactionDao.getUnsyncedTransactions()
+
+    suspend fun getTransactionByUuid(uuid: String) = transactionDao.getTransactionByUuid(uuid)
+
+    suspend fun insertCustomCurrency(customCurrency: CustomCurrency) =
+        customCurrencyDao.insertCustomCurrency(customCurrency)
+
+    suspend fun deleteCustomCurrency(customCurrency: CustomCurrency) =
+        customCurrencyDao.deleteCustomCurrency(customCurrency)
 
     suspend fun getCustomCurrencyCount(): Int = customCurrencyDao.getCustomCurrencyCount()
 }

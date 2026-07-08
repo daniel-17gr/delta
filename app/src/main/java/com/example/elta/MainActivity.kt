@@ -10,6 +10,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarHost
@@ -26,7 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.elta.ui.theme.LocalAppCurrency
-import com.example.elta.ui.theme.ΔeltaTheme
+import com.example.elta.ui.theme.DeltaTheme
 import com.example.elta.data.CustomCurrency
 import kotlinx.coroutines.launch
 
@@ -61,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
             val currentCurrencyCode by settingsManager.currencyCode.collectAsState(initial = "EUR")
-            val customCurrencies by viewModel.customCurrencies.collectAsState(initial = emptyList())
+            val customCurrencies by viewModel.customCurrencies.collectAsState()
             val coroutineScope = rememberCoroutineScope()
 
             val resolvedCurrency = remember(currentCurrencyCode, customCurrencies) {
@@ -74,22 +75,35 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Collect real transaction data from Room via ViewModel
             val transactionList by viewModel.transactions.collectAsState()
-
-            // Pre-computed aggregations from SQLite — no main-thread math
+            val deletedTransactions by viewModel.deletedTransactions.collectAsState()
             val netBalance by viewModel.netBalance.collectAsState()
             val totalIncome by viewModel.totalIncome.collectAsState()
             val totalExpense by viewModel.totalExpense.collectAsState()
+            val syncStatus by viewModel.syncStatus.collectAsState()
+            val authUid by viewModel.authStatus.collectAsState()
+            val errorMessage by viewModel.errorMessage.collectAsState()
+            val savedUsername by settingsManager.username.collectAsState(initial = null)
+            val isSyncPaused by settingsManager.isSyncPaused.collectAsState(initial = false)
+            val savedSyncUid by settingsManager.syncUid.collectAsState(initial = null)
+
+            // Keep viewModel's username in sync with DataStore
+            LaunchedEffect(savedUsername) { viewModel.updateLocalUsername(savedUsername) }
+
+            // Keep viewModel's syncUidOverride in sync with DataStore
+            LaunchedEffect(savedSyncUid) {
+                viewModel.syncManager.setSyncUidOverride(savedSyncUid)
+            }
 
             val snackbarHostState = remember { SnackbarHostState() }
 
             CompositionLocalProvider(LocalAppCurrency provides resolvedCurrency) {
-                ΔeltaTheme(darkTheme = isDarkTheme) {
+                DeltaTheme(darkTheme = isDarkTheme) {
                     var currentScreen by rememberSaveable { mutableStateOf("home") }
 
                     Scaffold(
                         modifier = Modifier.fillMaxSize(),
+                        contentWindowInsets = WindowInsets(0, 0, 0, 0),
                         snackbarHost = {
                             SnackbarHost(
                                 hostState = snackbarHostState,
@@ -100,7 +114,6 @@ class MainActivity : ComponentActivity() {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(innerPadding)
                         ) {
                             when (currentScreen) {
                                 "home" -> {
@@ -110,6 +123,8 @@ class MainActivity : ComponentActivity() {
                                         totalIncome = totalIncome,
                                         totalExpense = totalExpense,
                                         customCurrencies = customCurrencies,
+                                        syncStatus = syncStatus,
+                                        isSyncPaused = isSyncPaused,
                                         onAddTransaction = { amount, category, type ->
                                             viewModel.addTransaction(amount, category, type)
                                         },
@@ -117,12 +132,12 @@ class MainActivity : ComponentActivity() {
                                             viewModel.deleteTransaction(transaction)
                                             coroutineScope.launch {
                                                 val result = snackbarHostState.showSnackbar(
-                                                    message = "Transaction deleted",
+                                                    message = "Moved to trash",
                                                     actionLabel = "UNDO",
                                                     duration = SnackbarDuration.Short
                                                 )
                                                 if (result == SnackbarResult.ActionPerformed) {
-                                                    viewModel.insertTransaction(transaction)
+                                                    viewModel.restoreTransaction(transaction.uuid)
                                                 }
                                             }
                                         },
@@ -144,23 +159,80 @@ class MainActivity : ComponentActivity() {
                                             viewModel.deleteCustomCurrency(custom)
                                         },
                                         onNavigateToAnalytics = { currentScreen = "analytics" },
+                                        onNavigateToTrash = { currentScreen = "trash" },
+                                        onNavigateToProfile = { currentScreen = "profile" },
                                         onToggleTheme = {
-                                            coroutineScope.launch {
-                                                settingsManager.toggleTheme()
-                                            }
+                                            coroutineScope.launch { settingsManager.toggleTheme() }
                                         },
                                         onSelectCurrency = { code ->
-                                            coroutineScope.launch {
-                                                settingsManager.setCurrencyCode(code)
-                                            }
+                                            coroutineScope.launch { settingsManager.setCurrencyCode(code) }
+                                        },
+                                        onSync = {
+                                            if (!isSyncPaused) viewModel.sync()
                                         }
                                     )
                                 }
                                 "analytics" -> {
                                     DeltaAnalyticsScreen(
                                         transactionList = transactionList,
+                                        syncStatus = syncStatus,
+                                        isSyncPaused = isSyncPaused,
+                                        onSync = { viewModel.sync() },
                                         onNavigateBack = { currentScreen = "home" }
                                     )
+                                }
+                                "trash" -> {
+                                    DeltaTrashScreen(
+                                        deletedTransactions = deletedTransactions,
+                                        syncStatus = syncStatus,
+                                        isSyncPaused = isSyncPaused,
+                                        onRestore = { uuids -> viewModel.restoreTransactions(uuids) },
+                                        onDeletePermanently = { uuids -> viewModel.deleteTransactionsPermanently(uuids) },
+                                        onClearAll = {
+                                            viewModel.clearTrash(deletedTransactions.map { it.uuid })
+                                        },
+                                        onSync = { viewModel.sync() },
+                                        onNavigateBack = { currentScreen = "home" }
+                                    )
+                                }
+                                "profile" -> {
+                                     DeltaProfileScreen(
+                                         authUid = authUid,
+                                         username = savedUsername,
+                                         transactionCount = transactionList.size,
+                                         deletedCount = deletedTransactions.size,
+                                         syncStatus = syncStatus,
+                                         isSyncPaused = isSyncPaused,
+                                         isCustomPassportActive = savedSyncUid != null,
+                                         onSetUsername = { name ->
+                                             coroutineScope.launch {
+                                                 settingsManager.setUsername(name)
+                                                 viewModel.sync()
+                                             }
+                                         },
+                                         onLoadFromUid = { uid ->
+                                             viewModel.loadFromUid(uid)
+                                         },
+                                         onDisconnect = {
+                                             coroutineScope.launch {
+                                                 viewModel.syncManager.setSyncUidOverride(null)
+                                                 settingsManager.setSyncUid(null)
+                                                 settingsManager.setUsername(null)
+                                                 viewModel.clearLocalData()
+                                                 viewModel.sync()
+                                             }
+                                         },
+                                         onToggleSyncPause = {
+                                             coroutineScope.launch {
+                                                 settingsManager.setSyncPaused(!isSyncPaused)
+                                             }
+                                         },
+                                         onClearAllLocalData = { viewModel.clearAllLocalData() },
+                                         onSync = { viewModel.sync() },
+                                         onNavigateBack = { currentScreen = "home" },
+                                         errorMessage = errorMessage,
+                                         onClearError = { viewModel.clearError() }
+                                     )
                                 }
                             }
                         }

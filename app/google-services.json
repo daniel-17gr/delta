@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "547753792459",
+    "project_id": "awallet-7d6ba",
+    "storage_bucket": "awallet-7d6ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547753792459:android:91220c0af97ec712995c4e",
+        "android_client_info": {
+          "package_name": "com.example.elta"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "547753792459-8h3hkq3c4irqtd0oebpn9digf0toltok.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.elta",
+            "certificate_hash": "406bf4e0e566fc5c88c88aa0368752948e6a8dd5"
+          }
+        },
+        {
+          "client_id": "547753792459-tc3ikdg2011jfbfnuck9g46vbnjqrq2j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeVk1kjGkP6q87QVz-nVHW7pv_QfnoV6I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "547753792459-tc3ikdg2011jfbfnuck9g46vbnjqrq2j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

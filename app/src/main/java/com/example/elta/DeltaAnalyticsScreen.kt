@@ -1,15 +1,21 @@
 package com.example.elta
 import com.example.elta.ui.theme.LocalDeltaColors
 import com.example.elta.ui.theme.LocalAppCurrency
+import com.example.elta.ui.theme.NothingGlyph
+import com.example.elta.ui.theme.DeltaShapes
+import com.example.elta.ui.theme.DeltaDialog
+import com.example.elta.ui.theme.DeltaButton
+import com.example.elta.ui.theme.DeltaButtonStyle
 import androidx.activity.compose.BackHandler
-
-
-
-
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -34,11 +40,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -56,10 +64,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -74,6 +87,8 @@ import com.example.elta.R
 import com.example.elta.data.Transaction
 import com.example.elta.data.TransactionType
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -84,9 +99,25 @@ import java.util.Locale
 @Composable
 fun DeltaAnalyticsScreen(
     transactionList: List<Transaction>,
+    syncStatus: com.example.elta.data.SyncStatus = com.example.elta.data.SyncStatus.IDLE,
+    isSyncPaused: Boolean = false,
+    onSync: () -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     val colors = LocalDeltaColors.current
+    val syncIconRes = when {
+        isSyncPaused -> R.drawable.ic_cloud_alert
+        syncStatus == com.example.elta.data.SyncStatus.SYNCING -> R.drawable.ic_cloud_sync
+        syncStatus == com.example.elta.data.SyncStatus.SUCCESS -> R.drawable.ic_cloud_check
+        syncStatus == com.example.elta.data.SyncStatus.ERROR -> R.drawable.ic_cloud_alert
+        else -> R.drawable.ic_cloud_backup
+    }
+    val syncIconTint = when {
+        isSyncPaused -> colors.textSecondary.copy(alpha = 0.5f)
+        syncStatus == com.example.elta.data.SyncStatus.SUCCESS -> colors.positive
+        syncStatus == com.example.elta.data.SyncStatus.ERROR -> colors.negative
+        else -> colors.textPrimary
+    }
     val currentCurrency = LocalAppCurrency.current
 
     val haptic = LocalHapticFeedback.current
@@ -233,8 +264,9 @@ fun DeltaAnalyticsScreen(
             // 1. Top Bar
             Row(
                 modifier = Modifier
+                    .statusBarsPadding()
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -242,15 +274,15 @@ fun DeltaAnalyticsScreen(
                     Box(
                         modifier = Modifier
                             .size(36.dp)
-                            .clip(RoundedCornerShape(18.dp))
+                            .clip(DeltaShapes.Button)
                             .background(colors.buttonBackground)
+                            .border(1.dp, colors.border, DeltaShapes.Button)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onNavigateBack()
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        // Use resource drawable for back arrow, centered perfectly
                         Icon(
                             painter = painterResource(id = R.drawable.arrow_back),
                             contentDescription = "Back",
@@ -261,7 +293,7 @@ fun DeltaAnalyticsScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         fontWeight = FontWeight.Bold,
-                        text = "Analytics",
+                        text = "ANALYTICS",
                         fontFamily = NothingGlyph,
                         fontSize = 24.sp,
                         color = colors.textPrimary,
@@ -269,23 +301,48 @@ fun DeltaAnalyticsScreen(
                     )
                 }
 
-                // Export summary action icon button
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            exportLauncher.launch("Delta_Summary.csv")
-                        },
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.export),
-                        contentDescription = "Export",
-                        tint = colors.textPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(DeltaShapes.Button)
+                            .background(colors.buttonBackground)
+                            .border(1.dp, colors.border, DeltaShapes.Button)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onSync()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = syncIconRes),
+                            contentDescription = "Sync Data",
+                            tint = syncIconTint,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(DeltaShapes.Button)
+                            .background(colors.buttonBackground)
+                            .border(1.dp, colors.border, DeltaShapes.Button)
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                exportLauncher.launch("Delta_Summary.csv")
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.export),
+                            contentDescription = "Export",
+                            tint = colors.textPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -529,9 +586,9 @@ fun DeltaAnalyticsScreen(
             Box(
                 modifier = Modifier
                     .padding(24.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(DeltaShapes.Dialog)
                     .background(colors.surface)
-                    .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+                    .border(1.dp, colors.border, DeltaShapes.Dialog)
                     .padding(20.dp)
             ) {
                 Column(
@@ -552,9 +609,9 @@ fun DeltaAnalyticsScreen(
                         fontFamily = NothingGlyph,
                         fontSize = 28.sp,
                         color = when (title) {
-                            "INCOME", "SAVINGS" -> colors.positive
-                            "EXPENSES" -> colors.negative
-                            else -> colors.textPrimary
+                             "INCOME", "SAVINGS" -> colors.positive
+                             "EXPENSES" -> colors.negative
+                             else -> colors.textPrimary
                         }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
@@ -565,18 +622,14 @@ fun DeltaAnalyticsScreen(
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(20.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.textPrimary)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                selectedOverviewDetail = null
-                            }
-                            .padding(horizontal = 24.dp, vertical = 8.dp)
-                    ) {
-                        Text(text = "Close", color = colors.background, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                    DeltaButton(
+                        text = "CLOSE",
+                        onClick = {
+                            selectedOverviewDetail = null
+                        },
+                        modifier = Modifier.width(120.dp),
+                        style = DeltaButtonStyle.Primary
+                    )
                 }
             }
         }
@@ -592,9 +645,9 @@ fun DeltaAnalyticsScreen(
             Box(
                 modifier = Modifier
                     .padding(24.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(DeltaShapes.Dialog)
                     .background(colors.surface)
-                    .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+                    .border(1.dp, colors.border, DeltaShapes.Dialog)
                     .padding(20.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -638,18 +691,14 @@ fun DeltaAnalyticsScreen(
                         }
                     }
                     Spacer(modifier = Modifier.height(20.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(colors.textPrimary)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                selectedTrendCategory = null
-                            }
-                            .padding(horizontal = 24.dp, vertical = 8.dp)
-                    ) {
-                        Text(text = "Close", color = colors.background, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                    DeltaButton(
+                        text = "CLOSE",
+                        onClick = {
+                            selectedTrendCategory = null
+                        },
+                        modifier = Modifier.width(120.dp),
+                        style = DeltaButtonStyle.Primary
+                    )
                 }
             }
         }
@@ -671,7 +720,7 @@ fun DeltaAnalyticsScreen(
             }
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(DeltaShapes.Button)
                     .background(colors.textPrimary)
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
@@ -705,12 +754,12 @@ fun TimeRangeSelector(
             Box(
                 modifier = Modifier
                     .size(width = 54.dp, height = 36.dp)
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(CircleShape)
                     .background(if (isSelected) colors.textPrimary else Color.Transparent)
                     .border(
                         width = 1.dp,
                         color = if (isSelected) colors.textPrimary else colors.border,
-                        shape = RoundedCornerShape(18.dp)
+                        shape = CircleShape
                     )
                     .clickable { onRangeSelected(range) },
                 contentAlignment = Alignment.Center
@@ -904,9 +953,9 @@ fun OverviewCard(
     Box(
         modifier = Modifier
             .size(width = 160.dp, height = 150.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, outlineColor, RoundedCornerShape(16.dp))
+            .border(1.dp, outlineColor, DeltaShapes.Card)
             .clickable {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 onClick()
@@ -1004,68 +1053,100 @@ fun CashFlowCard(
 ) {
     val colors = LocalDeltaColors.current
     val currentCurrency = LocalAppCurrency.current
-
     val haptic = LocalHapticFeedback.current
+
+    // ── Data computation ──────────────────────────────────────────────────────
+    val numSlots = 14
+    data class SlotData(val incomeTotal: Double, val expenseTotal: Double, val netRunning: Double, val label: String)
+    val slotDataList = remember(transactions, selectedRange) {
+        if (transactions.isEmpty()) return@remember List(numSlots) { SlotData(0.0, 0.0, 0.0, "") }
+        val now = System.currentTimeMillis()
+        val oldest = transactions.minOf { it.timestamp }
+        val span = (now - oldest).coerceAtLeast(1L)
+        val incSlots = DoubleArray(numSlots)
+        val expSlots = DoubleArray(numSlots)
+        transactions.forEach { tx ->
+            val slot = ((tx.timestamp - oldest).toDouble() / span * (numSlots - 1)).toInt().coerceIn(0, numSlots - 1)
+            when (tx.type) {
+                TransactionType.INCOME, TransactionType.BORROWED -> incSlots[slot] += tx.amount
+                else -> expSlots[slot] += abs(tx.amount)
+            }
+        }
+        val slotDuration = span / numSlots
+        var running = 0.0
+        (0 until numSlots).map { i ->
+            val slotTime = oldest + i * slotDuration
+            val lbl = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(slotTime))
+            running += incSlots[i] - expSlots[i]
+            SlotData(incSlots[i], expSlots[i], running, lbl)
+        }
+    }
+    val trendMin = slotDataList.minOf { it.netRunning }.coerceAtMost(0.0)
+    val trendMax = slotDataList.maxOf { it.netRunning }.coerceAtLeast(1.0)
+    val trendDelta = (trendMax - trendMin).coerceAtLeast(1.0)
+
+    val maxAbs = maxOf(
+        slotDataList.maxOf { it.incomeTotal }.coerceAtLeast(1.0),
+        slotDataList.maxOf { it.expenseTotal }.coerceAtLeast(1.0)
+    )
+    fun fmtY(v: Double) = if (v >= 1000) "${String.format("%.1f", v/1000)}K" else String.format("%.0f", v)
+
+    // ── Animation trigger: animate a 0→1 float whenever data changes ──────────
+    val animTrigger = remember(slotDataList) { slotDataList.hashCode() }
+    val animProgress = remember(animTrigger) { Animatable(0f) }
+    LaunchedEffect(animTrigger) {
+        animProgress.snapTo(0f)
+        animProgress.animateTo(1f, animationSpec = tween(600, easing = FastOutSlowInEasing))
+    }
+    val progress = animProgress.value
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
+            // ── Header row ───────────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Bold,
                     text = if (graphType == "FLOW") "CASH FLOW TIMELINE" else "NET PROGRESSION TREND",
                     fontFamily = NothingGlyph,
                     fontSize = 11.sp,
                     color = colors.textSecondary,
                     letterSpacing = 1.sp
                 )
-                // Tabs to toggle graph style between Cashflow Columns and Net progression line
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(if (graphType == "FLOW") colors.textPrimary else colors.buttonBackground)
-                            .clickable { onTypeToggle("FLOW") }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                        fontWeight = FontWeight.Bold,
-                            text = "FLOW",
-                            fontSize = 8.sp,
-                            fontFamily = NothingGlyph,
-                            color = if (graphType == "FLOW") colors.background else colors.textSecondary
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(if (graphType == "TREND") colors.textPrimary else colors.buttonBackground)
-                            .clickable { onTypeToggle("TREND") }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                        fontWeight = FontWeight.Bold,
-                            text = "TREND",
-                            fontSize = 8.sp,
-                            fontFamily = NothingGlyph,
-                            color = if (graphType == "TREND") colors.background else colors.textSecondary
-                        )
+                    listOf("FLOW", "TREND").forEach { tab ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (graphType == tab) colors.textPrimary else colors.buttonBackground)
+                                .clickable { onTypeToggle(tab) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                fontWeight = FontWeight.Bold,
+                                text = tab,
+                                fontSize = 8.sp,
+                                fontFamily = NothingGlyph,
+                                color = if (graphType == tab) colors.background else colors.textSecondary
+                            )
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Legends row
+            // ── Legend ───────────────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -1082,138 +1163,183 @@ fun CashFlowCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Bucket transactions into N time slots from real data
-            val numSlots = 14
-            data class SlotData(val incomeTotal: Double, val expenseTotal: Double, val netRunning: Double, val label: String)
-            val slotDataList = remember(transactions, selectedRange) {
-                if (transactions.isEmpty()) return@remember List(numSlots) { SlotData(0.0, 0.0, 0.0, "") }
-                val now = System.currentTimeMillis()
-                val oldest = transactions.minOf { it.timestamp }
-                val span = (now - oldest).coerceAtLeast(1L)
-                val incSlots = DoubleArray(numSlots)
-                val expSlots = DoubleArray(numSlots)
-                transactions.forEach { tx ->
-                    val slot = ((tx.timestamp - oldest).toDouble() / span * (numSlots - 1)).toInt().coerceIn(0, numSlots - 1)
-                    when (tx.type) {
-                        TransactionType.INCOME, TransactionType.BORROWED -> incSlots[slot] += tx.amount
-                        else -> expSlots[slot] += abs(tx.amount)
-                    }
-                }
-                val slotDuration = span / numSlots
-                var running = 0.0
-                (0 until numSlots).map { i ->
-                    val slotTime = oldest + i * slotDuration
-                    val lbl = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(slotTime))
-                    running += incSlots[i] - expSlots[i]
-                    SlotData(incSlots[i], expSlots[i], running, lbl)
-                }
-            }
-            val maxInc = slotDataList.maxOf { it.incomeTotal }.coerceAtLeast(1.0)
-            val maxExp = slotDataList.maxOf { it.expenseTotal }.coerceAtLeast(1.0)
-            val maxAbs = maxOf(maxInc, maxExp)
-            val maxNet = slotDataList.maxOf { abs(it.netRunning) }.coerceAtLeast(1.0)
-
-            // Y-axis max label
-            val yMax = if (graphType == "FLOW") maxAbs else maxNet
-            fun fmtY(v: Double) = if (v >= 1000) "${String.format("%.1f", v/1000)}K" else String.format("%.0f", v)
-
-            // Graph representation: timeline coordinates
+            // ── Graph Canvas ─────────────────────────────────────────────────
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(180.dp)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
-                    // Y-Axis Labels
+                    // Y-axis labels
                     Column(
                         modifier = Modifier.fillMaxHeight(),
                         verticalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = fmtY(yMax),       fontSize = 10.sp, color = colors.textSecondary)
-                        Text(text = fmtY(yMax * 0.5), fontSize = 10.sp, color = colors.textSecondary)
-                        Text(text = "0",               fontSize = 10.sp, color = colors.textSecondary)
-                        Text(text = "-${fmtY(yMax * 0.5)}", fontSize = 10.sp, color = colors.textSecondary)
-                        Text(text = "-${fmtY(yMax)}", fontSize = 10.sp, color = colors.textSecondary)
+                        if (graphType == "FLOW") {
+                            Text(text = fmtY(maxAbs),            fontSize = 10.sp, color = colors.textSecondary)
+                            Text(text = fmtY(maxAbs * 0.5),      fontSize = 10.sp, color = colors.textSecondary)
+                            Text(text = "0",                    fontSize = 10.sp, color = colors.textSecondary)
+                            Text(text = "-${fmtY(maxAbs * 0.5)}", fontSize = 10.sp, color = colors.textSecondary)
+                            Text(text = "-${fmtY(maxAbs)}",      fontSize = 10.sp, color = colors.textSecondary)
+                        } else {
+                            val step = trendDelta / 4.0
+                            listOf(trendMax, trendMax - step, trendMax - 2 * step, trendMax - 3 * step, trendMin).forEach { v ->
+                                Text(text = fmtY(v), fontSize = 10.sp, color = colors.textSecondary)
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Grid & Graph Plotted Canvas
                     Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         Canvas(modifier = Modifier.fillMaxSize()) {
-                            val width  = size.width
-                            val height = size.height
-                            val centerY = height / 2
-                            val pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 10f), 0f)
+                            val w = size.width
+                            val h = size.height
+                            val centerY = h / 2f
+                            val dashEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 10f), 0f)
+                            val pointsCount = slotDataList.size
+                            val colW = w / pointsCount
 
-                            // Grid lines
+                            // ── Grid lines ───────────────────────────────────
                             listOf(0f, 0.25f, 0.5f, 0.75f, 1f).forEach { frac ->
                                 drawLine(
-                                    color = if (frac == 0.5f) colors.textSecondary else colors.border,
-                                    start = Offset(0f, height * frac),
-                                    end   = Offset(width, height * frac),
-                                    strokeWidth = if (frac == 0.5f) 1.5f else 1f,
-                                    pathEffect  = if (frac == 0.5f) null else pathEffect
+                                    color = colors.border,
+                                    start = Offset(0f, h * frac), end = Offset(w, h * frac),
+                                    strokeWidth = 1f,
+                                    pathEffect = dashEffect
+                                )
+                            }
+                            // Draw 0 baseline
+                            val zeroY = if (graphType == "FLOW") {
+                                centerY
+                            } else {
+                                (h * (trendMax / trendDelta)).toFloat()
+                            }
+                            if (zeroY in 0f..h) {
+                                drawLine(
+                                    color = colors.textSecondary,
+                                    start = Offset(0f, zeroY), end = Offset(w, zeroY),
+                                    strokeWidth = 1.5f
                                 )
                             }
 
-                            val pointsCount = slotDataList.size
-                            val colWidth = width / pointsCount
-
+                            // ── Selection highlight ───────────────────────────
                             if (selectedPointIndex != null && selectedPointIndex < pointsCount) {
-                                val selectX = colWidth * selectedPointIndex + colWidth / 2
+                                val sx = colW * selectedPointIndex + colW / 2f
                                 drawLine(
-                                    color = colors.textPrimary.copy(alpha = 0.4f),
-                                    start = Offset(selectX, 0f), end = Offset(selectX, height),
-                                    strokeWidth = 1f, pathEffect = pathEffect
+                                    color = colors.textPrimary.copy(alpha = 0.3f),
+                                    start = Offset(sx, 0f), end = Offset(sx, h),
+                                    strokeWidth = 1f, pathEffect = dashEffect
                                 )
                             }
 
                             if (graphType == "FLOW") {
+                                // ── Dot Matrix Columns ───────────────────────
                                 for (i in 0 until pointsCount) {
-                                    val x = colWidth * i + colWidth / 2
+                                    val cx = colW * i + colW / 2f
                                     val slot = slotDataList[i]
-                                    val incH = (slot.incomeTotal  / maxAbs * (centerY - 8)).toFloat()
-                                    val expH = (slot.expenseTotal / maxAbs * (centerY - 8)).toFloat()
+                                    val isSelected = selectedPointIndex == i
+
+                                    val incH = (slot.incomeTotal / maxAbs * (centerY - 8f)).toFloat()
+                                    val expH = (slot.expenseTotal / maxAbs * (centerY - 8f)).toFloat()
 
                                     // Income dots (above center)
                                     var dotY = centerY - 6f
                                     var drawn = 0f
                                     while (drawn < incH && dotY > 6f) {
-                                        drawCircle(color = colors.positive, radius = 2.5f, center = Offset(x, dotY))
-                                        dotY -= 8f; drawn += 8f
+                                        drawCircle(color = colors.positive, radius = 2.5f, center = Offset(cx, dotY))
+                                        dotY -= 8f
+                                        drawn += 8f
                                     }
+
                                     // Expense dots (below center)
-                                    dotY = centerY + 6f; drawn = 0f
-                                    while (drawn < expH && dotY < height - 6f) {
-                                        drawCircle(color = colors.negative, radius = 2.5f, center = Offset(x, dotY))
-                                        dotY += 8f; drawn += 8f
+                                    dotY = centerY + 6f
+                                    drawn = 0f
+                                    while (drawn < expH && dotY < h - 6f) {
+                                        drawCircle(color = colors.negative, radius = 2.5f, center = Offset(cx, dotY))
+                                        dotY += 8f
+                                        drawn += 8f
                                     }
+
                                     // Net dot
-                                    val netY = (centerY - (slot.incomeTotal - slot.expenseTotal) / maxAbs * (centerY - 8)).toFloat()
+                                    val netY = (centerY - (slot.incomeTotal - slot.expenseTotal) / maxAbs * (centerY - 8f)).toFloat()
                                     drawCircle(
-                                        color  = if (selectedPointIndex == i) colors.textPrimary else colors.textPrimary.copy(alpha = 0.6f),
-                                        radius = if (selectedPointIndex == i) 5f else 3f,
-                                        center = Offset(x, netY.coerceIn(4f, height - 4f))
+                                        color = if (isSelected) colors.textPrimary else colors.textPrimary.copy(alpha = 0.6f),
+                                        radius = if (isSelected) 5f else 3f,
+                                        center = Offset(cx, netY.coerceIn(4f, h - 4f))
                                     )
                                 }
                             } else {
-                                var lastX = 0f; var lastY = centerY
-                                for (i in 0 until pointsCount) {
-                                    val x    = colWidth * i + colWidth / 2
-                                    val netY = (centerY - slotDataList[i].netRunning / maxNet * (centerY - 8)).toFloat().coerceIn(4f, height - 4f)
-                                    if (i > 0) {
-                                        drawLine(
-                                            color = colors.textPrimary.copy(alpha = 0.7f),
-                                            start = Offset(lastX, lastY), end = Offset(x, netY), strokeWidth = 2f
-                                        )
+                                // ── TREND: smooth bezier line with gradient fill ──
+                                val zeroY = (h * (trendMax / trendDelta)).toFloat().coerceIn(0f, h)
+                                val netPoints = (0 until pointsCount).map { i ->
+                                    val cx = colW * i + colW / 2f
+                                    val netVal = slotDataList[i].netRunning * progress
+                                    val ny = (h * ((trendMax - netVal) / trendDelta)).toFloat().coerceIn(4f, h - 4f)
+                                    Offset(cx, ny)
+                                }
+
+                                if (netPoints.size >= 2) {
+                                    // Build smooth bezier path
+                                    val linePath = Path()
+                                    val fillPath = Path()
+                                    linePath.moveTo(netPoints[0].x, netPoints[0].y)
+                                    fillPath.moveTo(netPoints[0].x, zeroY)
+                                    fillPath.lineTo(netPoints[0].x, netPoints[0].y)
+
+                                    for (i in 1 until netPoints.size) {
+                                        val p0 = netPoints[i - 1]
+                                        val p1 = netPoints[i]
+                                        val cpX = (p0.x + p1.x) / 2f
+                                        linePath.cubicTo(cpX, p0.y, cpX, p1.y, p1.x, p1.y)
+                                        fillPath.cubicTo(cpX, p0.y, cpX, p1.y, p1.x, p1.y)
                                     }
-                                    drawCircle(
-                                        color  = if (selectedPointIndex == i) colors.textPrimary else colors.positive,
-                                        radius = if (selectedPointIndex == i) 5.5f else 3.5f,
-                                        center = Offset(x, netY)
+
+                                    fillPath.lineTo(netPoints.last().x, zeroY)
+                                    fillPath.close()
+
+                                    // Gradient fill area
+                                    val lastNet = slotDataList.lastOrNull()?.netRunning ?: 0.0
+                                    val fillColor = if (lastNet >= 0) colors.positive else colors.negative
+                                    drawPath(
+                                        path = fillPath,
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                fillColor.copy(alpha = 0.28f),
+                                                fillColor.copy(alpha = 0.0f)
+                                            ),
+                                            startY = 0f,
+                                            endY = h
+                                        )
                                     )
-                                    lastX = x; lastY = netY
+
+                                    // Smooth line
+                                    drawPath(
+                                        path = linePath,
+                                        color = colors.textPrimary,
+                                        style = Stroke(
+                                            width = 2.5f,
+                                            cap = StrokeCap.Round,
+                                            join = StrokeJoin.Round
+                                        )
+                                    )
+
+                                    // Dots on each point
+                                    netPoints.forEachIndexed { i, pt ->
+                                        val isSelected = selectedPointIndex == i
+                                        drawCircle(
+                                            color = if (isSelected) colors.textPrimary else colors.positive,
+                                            radius = if (isSelected) 6f else 4f,
+                                            center = pt
+                                        )
+                                        if (isSelected) {
+                                            drawCircle(
+                                                color = colors.textPrimary.copy(alpha = 0.15f),
+                                                radius = 12f,
+                                                center = pt
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1224,7 +1350,10 @@ fun CashFlowCard(
                                 Box(
                                     modifier = Modifier
                                         .weight(1f).fillMaxHeight()
-                                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onPointClick(i) }
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) { onPointClick(i) }
                                 )
                             }
                         }
@@ -1234,7 +1363,7 @@ fun CashFlowCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // X-Axis Labels from real slot timestamps
+            // ── X-Axis Labels ────────────────────────────────────────────────
             val xLabels = remember(slotDataList) {
                 val step = (slotDataList.size - 1) / 4
                 (0..4).map { slotDataList.getOrNull(it * step)?.label ?: "" }
@@ -1246,7 +1375,7 @@ fun CashFlowCard(
                 xLabels.forEach { lbl -> Text(text = lbl, fontSize = 10.sp, color = colors.textSecondary) }
             }
 
-            // Interactive Tooltip
+            // ── Tooltip ──────────────────────────────────────────────────────
             AnimatedVisibility(
                 visible = selectedPointIndex != null,
                 enter = fadeIn() + scaleIn(initialScale = 0.95f),
@@ -1257,7 +1386,7 @@ fun CashFlowCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth().padding(top = 12.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(DeltaShapes.Button)
                         .background(colors.buttonBackground)
                         .padding(10.dp)
                 ) {
@@ -1267,7 +1396,10 @@ fun CashFlowCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                        fontWeight = FontWeight.Bold,text = slot.label, fontSize = 11.sp, color = colors.textSecondary, fontFamily = NothingGlyph)
+                            fontWeight = FontWeight.Bold,
+                            text = slot.label, fontSize = 11.sp,
+                            color = colors.textSecondary, fontFamily = NothingGlyph
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             Text(text = String.format("Inc: +%,.0f", slot.incomeTotal),  fontSize = 11.sp, color = colors.positive, fontWeight = FontWeight.Bold)
                             Text(text = String.format("Exp: -%,.0f", slot.expenseTotal), fontSize = 11.sp, color = colors.negative, fontWeight = FontWeight.Bold)
@@ -1304,9 +1436,9 @@ fun SpendingByCategoryCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
@@ -1433,7 +1565,7 @@ fun CategorySpendingRow(
             Box(
                 modifier = Modifier
                     .size(24.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(DeltaShapes.Chip)
                     .background(colors.border),
                 contentAlignment = Alignment.Center
             ) {
@@ -1454,8 +1586,8 @@ fun CategorySpendingRow(
             )
         }
 
-        // Progress bar (medium weight)
-        DotsProgressBar(
+        // Animated solid bar
+        SolidBar(
             percentage = percentage,
             color = color,
             modifier = Modifier.weight(1.2f)
@@ -1496,9 +1628,9 @@ fun DailyAveragesCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
@@ -1578,9 +1710,9 @@ fun SummaryRowCards(
             modifier = Modifier
                 .weight(1f)
                 .height(190.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(DeltaShapes.Card)
                 .background(colors.surface)
-                .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+                .border(1.dp, colors.border, DeltaShapes.Card)
                 .padding(12.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -1629,9 +1761,9 @@ fun SummaryRowCards(
             modifier = Modifier
                 .weight(1f)
                 .height(190.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(DeltaShapes.Card)
                 .background(colors.surface)
-                .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+                .border(1.dp, colors.border, DeltaShapes.Card)
                 .padding(12.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
@@ -1675,9 +1807,9 @@ fun SpendingCalendarCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
@@ -1799,8 +1931,8 @@ fun SpendingCalendarCard(
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(RoundedCornerShape(3.dp))
+                                    .size(18.dp)
+                                    .clip(RoundedCornerShape(4.dp))
                                     .background(gridColor)
                             )
                         }
@@ -1822,9 +1954,9 @@ fun SpendingWeekdayCard(transactions: List<Transaction> = emptyList()) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
@@ -1902,29 +2034,40 @@ fun SpendingWeekdayCard(transactions: List<Transaction> = emptyList()) {
                 listOf(1,2,3,4,5,6,0).map { weekdayNames[it] to sums[it] }
             }
 
-            val maxVal = weekdays.maxOf { it.second }
+            val maxVal = weekdays.maxOf { it.second }.coerceAtLeast(0.01)
+            val peakDay = weekdays.maxByOrNull { it.second }?.first
             val barColor = if (weekdayMode == "EXPENSES") colors.negative else colors.positive
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 weekdays.forEach { (day, amt) ->
+                    val ratio = (amt / maxVal).toFloat().coerceIn(0f, 1f)
+                    val isPeak = day == peakDay && amt > 0
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(text = day, fontSize = 12.sp, color = colors.textPrimary, modifier = Modifier.width(90.dp))
-                        
-                        // Dots progress representing proportion
-                        val ratio = if (maxVal > 0) (amt / maxVal).toFloat() else 0f
-                        DotsProgressBar(percentage = ratio, color = barColor, modifier = Modifier.weight(1f))
-                        
+                        Text(
+                            text = day,
+                            fontSize = 12.sp,
+                            color = if (isPeak) colors.textPrimary else colors.textSecondary,
+                            fontWeight = if (isPeak) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.width(90.dp)
+                        )
+                        // Solid animated bar
+                        SolidBar(
+                            percentage = ratio,
+                            color = barColor,
+                            modifier = Modifier.weight(1f),
+                            isPeak = isPeak
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                        fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Bold,
                             text = formatCompact(amt, ""),
                             fontFamily = NothingGlyph,
                             fontSize = 12.sp,
-                            color = colors.textPrimary,
+                            color = if (isPeak) barColor else colors.textPrimary,
                             textAlign = TextAlign.End,
                             modifier = Modifier.width(50.dp)
                         )
@@ -1948,9 +2091,9 @@ fun FinancialRatiosCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
@@ -2036,9 +2179,9 @@ fun RecordsCard(transactions: List<Transaction> = emptyList()) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
@@ -2100,9 +2243,9 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(DeltaShapes.Card)
             .background(colors.surface)
-            .border(1.dp, colors.border, RoundedCornerShape(16.dp))
+            .border(1.dp, colors.border, DeltaShapes.Card)
             .padding(16.dp)
     ) {
         Column {
@@ -2249,7 +2392,7 @@ fun InsightsCard(transactions: List<Transaction> = emptyList()) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(
-                        modifier = Modifier.size(32.dp).border(1.dp, colors.border, RoundedCornerShape(16.dp)),
+                        modifier = Modifier.size(32.dp).border(1.dp, colors.border, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -2299,8 +2442,6 @@ fun DotsProgressBar(
     modifier: Modifier = Modifier
 ) {
     val colors = LocalDeltaColors.current
-    val currentCurrency = LocalAppCurrency.current
-
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -2317,6 +2458,48 @@ fun DotsProgressBar(
                     .background(if (isFilled) color else colors.border)
             )
         }
+    }
+}
+
+/**
+ * Animated solid rounded bar — used for category and weekday rows.
+ * Animates its fill width from 0 to [percentage] on first appearance and on data change.
+ * [isPeak] tints the bar brighter for the highest-value entry.
+ */
+@Composable
+fun SolidBar(
+    percentage: Float,
+    color: Color,
+    modifier: Modifier = Modifier,
+    isPeak: Boolean = false
+) {
+    val colors = LocalDeltaColors.current
+    val animatedFill by animateFloatAsState(
+        targetValue = percentage.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing),
+        label = "SolidBarFill"
+    )
+    val barColor = if (isPeak) color else color.copy(alpha = 0.72f)
+
+    Box(
+        modifier = modifier
+            .height(6.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(colors.border)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(animatedFill)
+                .clip(RoundedCornerShape(3.dp))
+                .background(
+                    if (isPeak) {
+                        Brush.horizontalGradient(listOf(barColor, barColor.copy(alpha = 0.6f)))
+                    } else {
+                        Brush.horizontalGradient(listOf(barColor, barColor.copy(alpha = 0.4f)))
+                    }
+                )
+        )
     }
 }
 
