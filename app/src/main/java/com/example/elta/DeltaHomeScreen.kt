@@ -1,30 +1,26 @@
 package com.example.elta
 
+import android.content.res.Configuration
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOutQuart
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.EaseOutQuart
-import androidx.compose.animation.core.EaseInQuart
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +28,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -40,8 +37,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -51,23 +48,18 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.material3.Icon
-import androidx.compose.material3.rememberDrawerState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -78,45 +70,42 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
-import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import kotlinx.coroutines.launch
-import com.example.elta.R
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.stringResource
-import com.example.elta.CurrencyInfo
+import com.example.elta.data.CustomCurrency
 import com.example.elta.data.Transaction
 import com.example.elta.data.TransactionType
-import com.example.elta.data.CustomCurrency
-import com.example.elta.ui.theme.LocalDeltaColors
-import com.example.elta.ui.theme.LocalAppCurrency
-import com.example.elta.ui.theme.NothingGlyph
-import com.example.elta.ui.theme.DeltaShapes
-import com.example.elta.ui.theme.DeltaDialog
 import com.example.elta.ui.theme.DeltaButton
 import com.example.elta.ui.theme.DeltaButtonStyle
+import com.example.elta.ui.theme.DeltaDialog
+import com.example.elta.ui.theme.DeltaShapes
+import com.example.elta.ui.theme.LocalAppCurrency
+import com.example.elta.ui.theme.LocalDeltaColors
+import com.example.elta.ui.theme.NothingGlyph
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.math.hypot
+import kotlin.math.max
 
 enum class ArrowDirection {
     UP, DOWN
@@ -1116,10 +1105,8 @@ fun DeltaHomeScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.buttonBackground)
-                                    .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                    .size(44.dp)
+                                    .clip(CircleShape)
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         coroutineScope.launch { drawerState.open() }
@@ -1130,7 +1117,7 @@ fun DeltaHomeScreen(
                                     painter = painterResource(id = R.drawable.ic_menu),
                                     contentDescription = "Open Settings",
                                     tint = colors.textPrimary,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                             Text(
@@ -1148,10 +1135,8 @@ fun DeltaHomeScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.buttonBackground)
-                                    .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                    .size(44.dp)
+                                    .clip(CircleShape)
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         showAmounts = !showAmounts
@@ -1162,15 +1147,13 @@ fun DeltaHomeScreen(
                                     painter = painterResource(id = if (showAmounts) R.drawable.eye else R.drawable.eye_off),
                                     contentDescription = "Toggle Amounts",
                                     tint = colors.textPrimary,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(colors.buttonBackground)
-                                    .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                    .size(44.dp)
+                                    .clip(CircleShape)
                                     .clickable {
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         onSync()
@@ -1181,7 +1164,7 @@ fun DeltaHomeScreen(
                                     painter = painterResource(id = syncIconRes),
                                     contentDescription = "Sync Data",
                                     tint = syncIconTint,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                         }
@@ -1393,10 +1376,8 @@ fun DeltaHomeScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(colors.buttonBackground)
-                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                .size(44.dp)
+                                .clip(CircleShape)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     coroutineScope.launch { drawerState.open() }
@@ -1407,7 +1388,7 @@ fun DeltaHomeScreen(
                                 painter = painterResource(id = R.drawable.ic_menu),
                                 contentDescription = "Open Settings",
                                 tint = colors.textPrimary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                         Text(
@@ -1425,10 +1406,8 @@ fun DeltaHomeScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(colors.buttonBackground)
-                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                .size(44.dp)
+                                .clip(CircleShape)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     showAmounts = !showAmounts
@@ -1439,15 +1418,13 @@ fun DeltaHomeScreen(
                                 painter = painterResource(id = if (showAmounts) R.drawable.eye else R.drawable.eye_off),
                                 contentDescription = "Toggle Amounts",
                                 tint = colors.textPrimary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(colors.buttonBackground)
-                                .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                                .size(44.dp)
+                                .clip(CircleShape)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     onSync()
@@ -1458,7 +1435,7 @@ fun DeltaHomeScreen(
                                 painter = painterResource(id = syncIconRes),
                                 contentDescription = "Sync Data",
                                 tint = syncIconTint,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }
@@ -2873,28 +2850,25 @@ fun NothingGlyphSavingAnimation(
     trigger: Boolean,
     startOffset: Offset,
     amountText: String,
+    dotSpacing: Dp = 16.dp,             // Distance between grid dots
+    dotRadius: Dp = 2.dp,               // Size of individual dot matrix points
+    maxOpacity: Float = 0.7f,           // Maximum dot opacity capped at 0.7
+    revealThreshold: Float = 0.70f,     // Wave expansion completes at 70% duration (0.70 max)
     onFinished: () -> Unit
 ) {
     if (!trigger) return
 
     val animProgress = remember { Animatable(0f) }
     val colors = LocalDeltaColors.current
-    val haptic = LocalHapticFeedback.current
 
     LaunchedEffect(trigger) {
-        // Trigger rhythmic tactile clicks to simulate wave ripples propagating physically
-        launch {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            kotlinx.coroutines.delay(220)
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            kotlinx.coroutines.delay(220)
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        }
+
+
         animProgress.animateTo(
             targetValue = 1f,
             animationSpec = tween(
-                durationMillis = 1500,
-                easing = LinearOutSlowInEasing
+                durationMillis = 1600,
+                easing = FastOutSlowInEasing
             )
         )
         onFinished()
@@ -2902,74 +2876,66 @@ fun NothingGlyphSavingAnimation(
 
     val progress = animProgress.value
 
+    // --- 1. Progressive Matrix Dot Ripple Canvas ---
     Canvas(
         modifier = Modifier.fillMaxSize()
     ) {
-        // 1. Dotted ripple circles expanding from startOffset (save button center)
-        // First wave: covers massive screen area
-        val wave1Progress = progress
-        if (wave1Progress > 0f) {
-            val radius = wave1Progress * 1200.dp.toPx()
-            val alpha = (1f - wave1Progress) * 0.45f
-            drawCircle(
-                color = colors.textPrimary.copy(alpha = alpha),
-                radius = radius,
-                center = startOffset,
-                style = Stroke(
-                    width = 2.5.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(8.dp.toPx(), 10.dp.toPx()),
-                        0f
-                    )
-                )
-            )
+        val width = size.width
+        val height = size.height
+
+        val dotSpacingPx = dotSpacing.toPx()
+        val dotRadiusPx = dotRadius.toPx()
+
+        // Maximum distance to cover all 4 screen corners from origin point
+        val maxRadius = max(
+            max(hypot(startOffset.x, startOffset.y), hypot(width - startOffset.x, startOffset.y)),
+            max(hypot(startOffset.x, height - startOffset.y), hypot(width - startOffset.x, height - startOffset.y))
+        )
+
+
+        val revealPhaseProgress = (progress / revealThreshold).coerceIn(0f, 1f)
+        val fadeOutDuration = 1f - revealThreshold
+
+        val globalFadeOut = if (progress > revealThreshold) {
+            1f - ((progress - revealThreshold) / fadeOutDuration).coerceIn(0f, 1f)
+        } else {
+            1f
         }
 
-        // Second wave (delayed, slower start)
-        val wave2Progress = ((progress - 0.25f).coerceAtLeast(0f) / 0.75f)
-        if (wave2Progress > 0f) {
-            val radius = wave2Progress * 1400.dp.toPx()
-            val alpha = (1f - wave2Progress) * 0.3f
-            drawCircle(
-                color = colors.textPrimary.copy(alpha = alpha),
-                radius = radius,
-                center = startOffset,
-                style = Stroke(
-                    width = 1.8.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(6.dp.toPx(), 8.dp.toPx()),
-                        0f
-                    )
-                )
-            )
-        }
+        val currentWaveRadius = revealPhaseProgress * maxRadius
+        val waveSoftEdgePx = 80.dp.toPx()
 
-        // Third wave (delayed, extra depth)
-        val wave3Progress = ((progress - 0.5f).coerceAtLeast(0f) / 0.5f)
-        if (wave3Progress > 0f) {
-            val radius = wave3Progress * 1600.dp.toPx()
-            val alpha = (1f - wave3Progress) * 0.15f
-            drawCircle(
-                color = colors.textPrimary.copy(alpha = alpha),
-                radius = radius,
-                center = startOffset,
-                style = Stroke(
-                    width = 1.2.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(4.dp.toPx(), 6.dp.toPx()),
-                        0f
+        val cols = (width / dotSpacingPx).toInt() + 1
+        val rows = (height / dotSpacingPx).toInt() + 1
+
+        for (row in 0..rows) {
+            for (col in 0..cols) {
+                val cx = col * dotSpacingPx
+                val cy = row * dotSpacingPx
+
+                val dist = hypot(cx - startOffset.x, cy - startOffset.y)
+                val localRevealAlpha = ((currentWaveRadius - dist) / waveSoftEdgePx).coerceIn(0f, 1f)
+
+                // Capped at maxOpacity (0.7f)
+                val finalAlpha = localRevealAlpha * globalFadeOut * maxOpacity
+
+                if (finalAlpha > 0.01f) {
+                    drawCircle(
+                        color = colors.textPrimary.copy(alpha = finalAlpha),
+                        radius = dotRadiusPx,
+                        center = Offset(cx, cy)
                     )
-                )
-            )
+                }
+            }
         }
     }
 
-    // 2. Dot-Matrix Floating Saved Text
+    // --- 2. Dot-Matrix Floating Saved Text ---
     val textAlpha by animateFloatAsState(
-        targetValue = if (progress < 0.85f) 0.95f else 0.0f,
-        animationSpec = spring(stiffness = Spring.StiffnessVeryLow)
+        targetValue = if (progress in 0.15f..0.85f) 1.0f else 0.0f,
+        animationSpec = tween(durationMillis = 300)
     )
-    val textYOffset = (progress * -160.dp.value)
+    val textYOffset = (progress * -120.dp.value)
 
     if (textAlpha > 0f) {
         Box(

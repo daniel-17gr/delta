@@ -273,10 +273,8 @@ fun DeltaAnalyticsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(DeltaShapes.Button)
-                            .background(colors.buttonBackground)
-                            .border(1.dp, colors.border, DeltaShapes.Button)
+                            .size(44.dp)
+                            .clip(CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onNavigateBack()
@@ -287,7 +285,7 @@ fun DeltaAnalyticsScreen(
                             painter = painterResource(id = R.drawable.arrow_back),
                             contentDescription = "Back",
                             tint = colors.textPrimary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -307,10 +305,8 @@ fun DeltaAnalyticsScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(DeltaShapes.Button)
-                            .background(colors.buttonBackground)
-                            .border(1.dp, colors.border, DeltaShapes.Button)
+                            .size(44.dp)
+                            .clip(CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onSync()
@@ -321,15 +317,13 @@ fun DeltaAnalyticsScreen(
                             painter = painterResource(id = syncIconRes),
                             contentDescription = "Sync Data",
                             tint = syncIconTint,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(DeltaShapes.Button)
-                            .background(colors.buttonBackground)
-                            .border(1.dp, colors.border, DeltaShapes.Button)
+                            .size(44.dp)
+                            .clip(CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 exportLauncher.launch("Delta_Summary.csv")
@@ -340,7 +334,7 @@ fun DeltaAnalyticsScreen(
                             painter = painterResource(id = R.drawable.export),
                             contentDescription = "Export",
                             tint = colors.textPrimary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }

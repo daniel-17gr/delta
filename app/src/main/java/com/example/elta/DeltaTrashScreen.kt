@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,7 +93,7 @@ fun DeltaTrashScreen(
             .background(colors.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            
+
             // ─── Top Bar ──────────────────────────────────────────
             Row(
                 modifier = Modifier
@@ -102,56 +103,35 @@ fun DeltaTrashScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
+
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onNavigateBack()
+                        },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(DeltaShapes.Button)
-                            .background(colors.buttonBackground)
-                            .border(1.dp, colors.border, DeltaShapes.Button)
-                            .clickable {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onNavigateBack()
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.arrow_back),
-                            contentDescription = "Back",
-                            tint = colors.textPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "TRASH",
-                        fontSize = 24.sp,
-                        fontFamily = NothingGlyph,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.textPrimary,
-                        letterSpacing = 1.sp
+                    Icon(
+                        painter = painterResource(id = R.drawable.arrow_back),
+                        contentDescription = "Back",
+                        tint = colors.textPrimary,
+                        modifier = Modifier.size(24.dp)
                     )
-                    
-                    if (deletedTransactions.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(DeltaShapes.Badge)
-                                .border(1.dp, nothingRed, DeltaShapes.Badge)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "${deletedTransactions.size}",
-                                fontSize = 10.sp,
-                                fontFamily = NothingGlyph,
-                                fontWeight = FontWeight.Bold,
-                                color = nothingRed
-                            )
-                        }
-                    }
                 }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "TRASH",
+                    fontSize = 24.sp,
+                    fontFamily = NothingGlyph,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
+                    letterSpacing = 1.sp
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -159,10 +139,8 @@ fun DeltaTrashScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(DeltaShapes.Button)
-                            .background(colors.buttonBackground)
-                            .border(1.dp, colors.border, DeltaShapes.Button)
+                            .size(44.dp)
+                            .clip(CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onSync()
@@ -173,7 +151,7 @@ fun DeltaTrashScreen(
                             painter = painterResource(id = syncIconRes),
                             contentDescription = "Sync Data",
                             tint = syncIconTint,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -201,7 +179,10 @@ fun DeltaTrashScreen(
             }
 
             // Divider matching Nothing style
-            Spacer(modifier = Modifier.height(1.dp).fillMaxWidth().background(colors.border))
+            Spacer(modifier = Modifier
+                .height(1.dp)
+                .fillMaxWidth()
+                .background(colors.border))
 
             Box(
                 modifier = Modifier
@@ -231,11 +212,16 @@ fun DeltaTrashScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 24.dp
+                        )
                     ) {
                         grouped.forEach { (_, txList) ->
                             val label = dayLabel(txList.first().timestamp)
-                            
+
                             // Sticky Date Header with Group Action Icon Buttons
                             item(key = "header_${epochDay(txList.first().timestamp)}") {
                                 Row(
@@ -264,7 +250,8 @@ fun DeltaTrashScreen(
                                                 .clickable {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     groupActionTitle = "RESTORE ALL?"
-                                                    groupActionMessage = "RESTORE ALL ${txList.size} TRANSACTIONS FROM $label?"
+                                                    groupActionMessage =
+                                                        "RESTORE ALL ${txList.size} TRANSACTIONS FROM $label?"
                                                     groupActionLabel = "RESTORE"
                                                     groupActionIsDelete = false
                                                     groupActionUuids = txList.map { it.uuid }
@@ -285,7 +272,8 @@ fun DeltaTrashScreen(
                                                 .clickable {
                                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                     groupActionTitle = "DELETE ALL?"
-                                                    groupActionMessage = "PERMANENTLY DELETE ALL ${txList.size} TRANSACTIONS FROM $label? THIS CANNOT BE UNDONE."
+                                                    groupActionMessage =
+                                                        "PERMANENTLY DELETE ALL ${txList.size} TRANSACTIONS FROM $label? THIS CANNOT BE UNDONE."
                                                     groupActionLabel = "DELETE"
                                                     groupActionIsDelete = true
                                                     groupActionUuids = txList.map { it.uuid }
@@ -422,7 +410,7 @@ private fun TrashTransactionRow(
                 letterSpacing = 1.sp
             )
         }
-        
+
         // Right: amount (matching TransactionRow style)
         val isIncome = tx.type == TransactionType.INCOME || tx.type == TransactionType.BORROWED
         val amountColor = if (isIncome) colors.positive else colors.negative
@@ -430,7 +418,12 @@ private fun TrashTransactionRow(
             text = when (tx.type) {
                 TransactionType.BORROWED -> String.format("+%,.2f", tx.amount)
                 TransactionType.LENT -> String.format("-%,.2f", kotlin.math.abs(tx.amount))
-                else -> "${if (tx.amount >= 0) "+" else "-"}${String.format("%,.2f", kotlin.math.abs(tx.amount))}"
+                else -> "${if (tx.amount >= 0) "+" else "-"}${
+                    String.format(
+                        "%,.2f",
+                        kotlin.math.abs(tx.amount)
+                    )
+                }"
             },
             fontFamily = NothingGlyph,
             fontSize = 18.sp,
@@ -460,9 +453,15 @@ fun TrashOptionsDialog(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
-        
-        val isIncome = transaction.type == TransactionType.INCOME || transaction.type == TransactionType.BORROWED
-        val amountText = "${if (isIncome) "+" else "-"}${String.format("%,.2f", kotlin.math.abs(transaction.amount))}"
+
+        val isIncome =
+            transaction.type == TransactionType.INCOME || transaction.type == TransactionType.BORROWED
+        val amountText = "${if (isIncome) "+" else "-"}${
+            String.format(
+                "%,.2f",
+                kotlin.math.abs(transaction.amount)
+            )
+        }"
         Text(
             text = "${transaction.category} • $amountText",
             fontSize = 13.sp,

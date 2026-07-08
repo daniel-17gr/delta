@@ -129,10 +129,8 @@ fun DeltaProfileScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(DeltaShapes.Button)
-                            .background(colors.buttonBackground)
-                            .border(1.dp, colors.border, DeltaShapes.Button)
+                            .size(44.dp)
+                            .clip(CircleShape)
                             .clickable {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                 onNavigateBack()
@@ -143,7 +141,7 @@ fun DeltaProfileScreen(
                             painter = painterResource(id = R.drawable.arrow_back),
                             contentDescription = "Back",
                             tint = colors.textPrimary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
@@ -159,10 +157,8 @@ fun DeltaProfileScreen(
 
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(DeltaShapes.Button)
-                        .background(colors.buttonBackground)
-                        .border(1.dp, colors.border, DeltaShapes.Button)
+                        .size(44.dp)
+                        .clip(CircleShape)
                         .clickable {
                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             onSync()
@@ -173,7 +169,7 @@ fun DeltaProfileScreen(
                         painter = painterResource(id = syncIconRes),
                         contentDescription = "Sync Data",
                         tint = syncIconTint,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
@@ -744,19 +740,37 @@ fun GlyphProfileAvatar(
     val matrixSize = 12
     var currentSeed by remember { mutableStateOf(initialSeed) }
     
-    // Hold previous and next patterns for fluid morphing
     var oldPattern by remember { mutableStateOf(generateSymmetric12x12Pattern(currentSeed)) }
     var targetPattern by remember { mutableStateOf(oldPattern) }
     
     val transitionProgress = remember { Animatable(1f) }
     val coroutineScope = rememberCoroutineScope()
-    
+
+    // Map your custom coordinate offsets (centered around 0,0)
+    // Extra coordinates extending the 12x12 grid into a circle shape
+    val extraDots = remember {
+        listOf(
+            // Right Side
+            listOf(6.5f to -3.5f, 6.5f to -2.5f, 6.5f to -1.5f, 6.5f to -0.5f, 6.5f to 0.5f, 6.5f to 1.5f, 6.5f to 2.5f, 6.5f to 3.5f),
+            listOf(7.5f to -1.5f, 7.5f to -0.5f, 7.5f to 0.5f, 7.5f to 1.5f),
+            // Left Side
+            listOf(-6.5f to -3.5f, -6.5f to -2.5f, -6.5f to -1.5f, -6.5f to -0.5f, -6.5f to 0.5f, -6.5f to 1.5f, -6.5f to 2.5f, -6.5f to 3.5f),
+            listOf(-7.5f to -1.5f, -7.5f to -0.5f, -7.5f to 0.5f, -7.5f to 1.5f),
+            // Top Side
+            listOf(-3.5f to 6.5f, -2.5f to 6.5f, -1.5f to 6.5f, -0.5f to 6.5f, 0.5f to 6.5f, 1.5f to 6.5f, 2.5f to 6.5f, 3.5f to 6.5f),
+            listOf(-1.5f to 7.5f, -0.5f to 7.5f, 0.5f to 7.5f, 1.5f to 7.5f),
+            // Bottom Side
+            listOf(-3.5f to -6.5f, -2.5f to -6.5f, -1.5f to -6.5f, -0.5f to -6.5f, 0.5f to -6.5f, 1.5f to -6.5f, 2.5f to -6.5f, 3.5f to -6.5f),
+            listOf(-1.5f to -7.5f, -0.5f to -7.5f, 0.5f to -7.5f, 1.5f to -7.5f)
+        ).flatten()
+    }
+
     Box(
         modifier = modifier
             .size(size)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null // Clean tap without standard Android ripple
+                indication = null
             ) {
                 if (!transitionProgress.isRunning) {
                     coroutineScope.launch {
@@ -780,76 +794,79 @@ fun GlyphProfileAvatar(
             val canvasWidth = size.toPx()
             val canvasHeight = size.toPx()
             
-            // Outer background canvas
             drawRect(color = backgroundColor)
             
-            val paddingRatio = 0.12f
-            val availableWidth = canvasWidth * (1f - 2 * paddingRatio)
-            val step = availableWidth / matrixSize
-            val startX = canvasWidth * paddingRatio + step / 2f
-            val startY = canvasHeight * paddingRatio + step / 2f
+            // Adjust step scale to accommodate the expanded radius (16x16 coordinate space)
+            val virtualGridSize = 16f 
+            val step = canvasWidth / virtualGridSize
+            val centerX = canvasWidth / 2f
+            val centerY = canvasHeight / 2f
             
             val maxRadius = step * 0.38f
-            val centerIndex = (matrixSize - 1) / 2f
-            val maxDistance = sqrt(centerIndex * centerIndex + centerIndex * centerIndex)
-            
-            for (row in 0 until matrixSize) {
-                for (col in 0 until matrixSize) {
-                    val index = row * matrixSize + col
-                    val wasActive = oldPattern[index]
-                    val isTargetActive = targetPattern[index]
-                    
-                    // Stagger animation radially from the center outward
-                    val dx = col - centerIndex
-                    val dy = row - centerIndex
-                    val distanceFromCenter = sqrt(dx * dx + dy * dy)
-                    val delayFraction = (distanceFromCenter / maxDistance) * 0.45f
-                    
-                    // Local progress for this specific dot (0.0 -> 1.0)
-                    val localProgress = ((transitionProgress.value - delayFraction) / (1f - delayFraction))
-                        .coerceIn(0f, 1f)
-                    
-                    // Calculate dot scale & alpha state based on transition type
-                    val (scale, alpha, dotColor) = when {
-                        wasActive && isTargetActive -> {
-                            // Mid-transition pulse
-                            val pulse = 1f - (0.35f * sin(localProgress * Math.PI).toFloat())
-                            Triple(pulse, 1f, activeColor)
-                        }
-                        !wasActive && isTargetActive -> {
-                            // Grow & Fade In
-                            Triple(localProgress, localProgress, activeColor)
-                        }
-                        wasActive && !isTargetActive -> {
-                            // Shrink & Fade Out
-                            val inv = 1f - localProgress
-                            Triple(inv, inv, activeColor)
-                        }
-                        else -> {
-                            // Static inactive dot
-                            Triple(1f, 0.35f, inactiveColor)
-                        }
+            val maxDistance = 7.5f // Max radius from origin
+
+            // Helper function to draw individual dots and handle animations
+            fun drawDotAt(gridX: Float, gridY: Float, isActiveOld: Boolean, isActiveTarget: Boolean) {
+                val dx = gridX
+                val dy = gridY
+                val distanceFromCenter = sqrt(dx * dx + dy * dy)
+                val delayFraction = (distanceFromCenter / maxDistance) * 0.45f
+                
+                val localProgress = ((transitionProgress.value - delayFraction) / (1f - delayFraction))
+                    .coerceIn(0f, 1f)
+                
+                val (scale, alpha, dotColor) = when {
+                    isActiveOld && isActiveTarget -> {
+                        val pulse = 1f - (0.35f * sin(localProgress * Math.PI).toFloat())
+                        Triple(pulse, 1f, activeColor)
                     }
-                    
-                    val cx = startX + col * step
-                    val cy = startY + row * step
-                    
-                    // Draw dim background placeholder for active dots
-                    if (wasActive || isTargetActive) {
-                        drawCircle(
-                            color = inactiveColor,
-                            radius = maxRadius * 0.6f,
-                            center = Offset(cx, cy)
-                        )
-                    }
-                    
-                    // Draw animated foreground dot
+                    !isActiveOld && isActiveTarget -> Triple(localProgress, localProgress, activeColor)
+                    isActiveOld && !isActiveTarget -> Triple(1f - localProgress, 1f - localProgress, activeColor)
+                    else -> Triple(1f, 0.35f, inactiveColor)
+                }
+                
+                val cx = centerX + gridX * step
+                val cy = centerY - gridY * step // Invert Y for standard Cartesian coordinates
+                
+                if (isActiveOld || isActiveTarget) {
                     drawCircle(
-                        color = dotColor.copy(alpha = alpha.coerceIn(0f, 1f)),
-                        radius = (maxRadius * scale).coerceAtLeast(1f),
+                        color = inactiveColor,
+                        radius = maxRadius * 0.6f,
                         center = Offset(cx, cy)
                     )
                 }
+                
+                drawCircle(
+                    color = dotColor.copy(alpha = alpha.coerceIn(0f, 1f)),
+                    radius = (maxRadius * scale).coerceAtLeast(1f),
+                    center = Offset(cx, cy)
+                )
+            }
+
+            // 1. Draw standard 12x12 Inner Grid
+            for (row in 0 until matrixSize) {
+                for (col in 0 until matrixSize) {
+                    val index = row * matrixSize + col
+                    val gridX = col - 5.5f
+                    val gridY = 5.5f - row
+                    
+                    drawDotAt(
+                        gridX = gridX,
+                        gridY = gridY,
+                        isActiveOld = oldPattern[index],
+                        isActiveTarget = targetPattern[index]
+                    )
+                }
+            }
+
+            // 2. Draw Extra Border Dots (kept static/inactive or linked to state as preferred)
+            extraDots.forEach { (x, y) ->
+                drawDotAt(
+                    gridX = x,
+                    gridY = y,
+                    isActiveOld = false,
+                    isActiveTarget = false
+                )
             }
         }
     }
